@@ -3,9 +3,9 @@
   "version": "1.0.4-alpha",
   "private": true,
   "scripts": {
-    "generate:plugins": "tsx scripts/generate-community-plugins.ts",
-    "predev": "tsx scripts/generate-community-plugins.ts",
-    "prebuild": "tsx scripts/generate-community-plugins.ts",
+    "generate:plugins": "npx tsx scripts/generate-community-plugins.ts",
+    "predev": "npx tsx scripts/generate-community-plugins.ts",
+    "prebuild": "npx tsx scripts/generate-community-plugins.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
