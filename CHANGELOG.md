@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.2-alpha (2026-04-01)
+
+### Fixed
+- **Wallpaper uploads in Docker** — uploads now stored in persistent `/data/uploads/` volume instead of read-only container filesystem
+- New API route `/api/uploads/[filename]` serves uploaded files with auth protection and cache headers
+
+---
+
 ## v1.0.1-alpha (2026-04-01)
 
 ### Added

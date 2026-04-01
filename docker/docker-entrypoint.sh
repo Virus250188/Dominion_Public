@@ -6,6 +6,9 @@ echo "  Dominion Dashboard"
 echo "  Starting up..."
 echo "================================================"
 
+# ── Ensure upload directory exists ───────────────────────────────────────────
+mkdir -p /data/uploads
+
 # ── Database migrations ──────────────────────────────────────────────────────
 echo "[dominion] Running database migrations..."
 npx prisma migrate deploy --schema=./prisma/schema.prisma

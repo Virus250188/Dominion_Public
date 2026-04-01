@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to public/uploads/
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    // Save to upload directory (Docker: /data/uploads, Dev: public/uploads)
+    const uploadsDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadsDir, { recursive: true });
 
     const ext = file.name.split(".").pop() || "jpg";
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filepath, buffer);
 
     logger.info("upload", "File uploaded", { filename, size: file.size });
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    return NextResponse.json({ url: `/api/uploads/${filename}` });
   } catch (err) {
     return NextResponse.json(
       { error: (err as Error).message },

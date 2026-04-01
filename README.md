@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://hub.docker.com/r/miguel1988/dominion"><img src="https://img.shields.io/badge/Docker_Hub-miguel1988%2Fdominion-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Hub" /></a>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Release-v1.0.1--alpha-orange?style=flat-square" alt="Alpha Release" />
+  <img src="https://img.shields.io/badge/Release-v1.0.2--alpha-orange?style=flat-square" alt="Alpha Release" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
