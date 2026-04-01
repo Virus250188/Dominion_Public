@@ -30,8 +30,8 @@ export function LoginForm() {
       if (result?.error) {
         setError("Falscher Benutzername oder Passwort");
       } else {
-        router.push("/");
-        router.refresh();
+        // Hard navigation so server layout re-renders with new session (loads theme from DB)
+        window.location.href = "/";
       }
     } catch {
       setError("Ein Fehler ist aufgetreten");

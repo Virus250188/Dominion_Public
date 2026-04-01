@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.4-alpha (2026-04-01)
+
+### Fixed
+- **Logout redirect** — no longer redirects to `0.0.0.0`, stays on your actual host
+- **Theme loads immediately after login** — hard navigation ensures server fetches DB settings with new session
+
+---
+
 ## v1.0.3-alpha (2026-04-01)
 
 ### Fixed
