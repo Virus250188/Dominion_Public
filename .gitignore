@@ -73,6 +73,7 @@ test-results/
 *.png
 !src/**/*.png
 !public/**/*.png
+!docs/**/*.png
 HANDOVER.md
 Ideen.txt
 PLAN-*.md
