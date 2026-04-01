@@ -36,9 +36,9 @@ COPY --from=builder /app/src/generated ./src/generated
 # Full node_modules from deps stage for Prisma CLI, migrations, seed runtime
 COPY --from=deps /app/node_modules ./node_modules
 
-# Entrypoint script
+# Entrypoint script (fix Windows CRLF → LF)
 COPY docker/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 
 # Data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
