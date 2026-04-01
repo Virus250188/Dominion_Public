@@ -1,8 +1,6 @@
 services:
   dominion:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
+    image: miguel1988/dominion:latest
     container_name: dominion
     ports:
       - "3000:3000"

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getSubDashboardWithData } from "@/lib/queries/subdashboards";
 import { getFoundationApps } from "@/lib/queries/tiles";

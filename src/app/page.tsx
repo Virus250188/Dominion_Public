@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Header } from "@/components/dashboard/Header";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { SearchBar } from "@/components/dashboard/SearchBar";

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { AppConnectionManager, type AppConnectionItem } from "@/components/settings/AppConnectionManager";

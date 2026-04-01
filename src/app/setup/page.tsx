@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { SetupWizard } from "@/components/auth/SetupWizard";

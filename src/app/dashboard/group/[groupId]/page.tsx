@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getGroupWithTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";

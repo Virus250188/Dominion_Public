@@ -28,20 +28,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Prisma: schema, migrations, generated client, seed
+# Prisma: schema, migrations, generated client, config, seed
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Runtime dependencies for migrations + seed
-COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
-COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
-COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder /app/node_modules/esbuild ./node_modules/esbuild
+# Full node_modules from deps stage for Prisma CLI, migrations, seed runtime
+COPY --from=deps /app/node_modules ./node_modules
 
 # Entrypoint script
 COPY docker/docker-entrypoint.sh ./docker-entrypoint.sh
@@ -52,7 +45,6 @@ RUN mkdir -p /data && chown nextjs:nodejs /data
 VOLUME /data
 
 ENV DATABASE_URL="file:/data/dominion.db"
-ENV AUTH_SECRET="change-me-to-a-random-string"
 
 USER nextjs
 

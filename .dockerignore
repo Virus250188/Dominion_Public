@@ -1,7 +1,11 @@
 node_modules
 .next
 .git
-*.md
-docker
 .env
+.env.local
 prisma/dev.db
+Feedback
+docs
+.playwright-mcp
+*.png
+!public/**/*.png
