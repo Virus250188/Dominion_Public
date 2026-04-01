@@ -2,12 +2,59 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { exportData, importData } from "@/lib/actions/settings";
-import { Download, Upload, AlertCircle, CheckCircle2 } from "lucide-react";
+import { changePassword } from "@/lib/actions/auth";
+import { Download, Upload, AlertCircle, CheckCircle2, Lock } from "lucide-react";
 
 export function SystemSettings() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Password change state
+  const [pwPending, startPwTransition] = useTransition();
+  const [pwMessage, setPwMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleChangePassword = () => {
+    setPwMessage(null);
+
+    // Client-side validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPwMessage({ type: "error", text: "Alle Felder muessen ausgefuellt werden." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPwMessage({ type: "error", text: "Das neue Passwort muss mindestens 6 Zeichen lang sein." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwMessage({ type: "error", text: "Die Passwoerter stimmen nicht ueberein." });
+      return;
+    }
+
+    startPwTransition(async () => {
+      try {
+        const result = await changePassword({
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        });
+        if (result.success) {
+          setPwMessage({ type: "success", text: "Passwort erfolgreich geaendert!" });
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        } else {
+          setPwMessage({ type: "error", text: result.error || "Passwort aendern fehlgeschlagen." });
+        }
+      } catch {
+        setPwMessage({ type: "error", text: "Passwort aendern fehlgeschlagen." });
+      }
+    });
+  };
 
   const handleExport = () => {
     startTransition(async () => {
@@ -51,6 +98,56 @@ export function SystemSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Passwort aendern */}
+      <section className="glass-card p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Passwort aendern</h2>
+        <p className="text-sm text-muted-foreground">
+          Aendere dein Anmeldepasswort. Das neue Passwort muss mindestens 6 Zeichen lang sein.
+        </p>
+        <div className="space-y-3 max-w-sm">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Aktuelles Passwort</label>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Aktuelles Passwort"
+              disabled={pwPending}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Neues Passwort</label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Neues Passwort"
+              disabled={pwPending}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Passwort bestaetigen</label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Passwort bestaetigen"
+              disabled={pwPending}
+            />
+          </div>
+        </div>
+        <Button onClick={handleChangePassword} disabled={pwPending}>
+          <Lock className="mr-2 h-4 w-4" />
+          Passwort aendern
+        </Button>
+        {pwMessage && (
+          <div className={`flex items-center gap-2 text-sm ${pwMessage.type === "success" ? "text-emerald-400" : "text-destructive"}`}>
+            {pwMessage.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            {pwMessage.text}
+          </div>
+        )}
+      </section>
+
       {/* Backup & Restore */}
       <section className="glass-card p-6 space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Backup & Restore</h2>
