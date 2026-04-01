@@ -21,11 +21,11 @@ export function LoginHero({ mode }: LoginHeroProps) {
         />
       </div>
 
-      {/* Title with DecryptedText effect + Machine Learning font */}
+      {/* Title with DecryptedText effect + Wallpoet brand font */}
       <h1
         className="text-4xl font-normal tracking-[0.3em] text-white/90"
         style={{
-          fontFamily: '"MachineLearning", sans-serif',
+          fontFamily: "var(--font-brand), sans-serif",
           textShadow: "0 0 40px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.1)",
         }}
       >
@@ -33,7 +33,6 @@ export function LoginHero({ mode }: LoginHeroProps) {
           text="DOMINION"
           speed={40}
           revealDelay={300}
-          sequential
         />
       </h1>
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Wallpoet } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { BackgroundLayer } from "@/components/backgrounds/BackgroundLayer";
@@ -7,6 +7,12 @@ import { EditModeProvider } from "@/contexts/EditModeContext";
 
 const geistSans = Geist({
   variable: "--font-sans",
+  subsets: ["latin"],
+});
+
+const wallpoet = Wallpoet({
+  variable: "--font-brand",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -36,7 +42,7 @@ export default function RootLayout({
     <html
       lang="de"
       data-theme="glass-dark"
-      className={`${geistSans.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${wallpoet.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-animated-gradient">

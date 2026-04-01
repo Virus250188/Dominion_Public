@@ -79,7 +79,7 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/logo-trimmed.png" alt="Dominion" className="h-7 w-7" />
-            <span className="text-lg text-foreground" style={{ fontFamily: '"MachineLearning", sans-serif' }}>Dominion</span>
+            <span className="text-lg text-foreground" style={{ fontFamily: "var(--font-brand), sans-serif" }}>Dominion</span>
           </div>
           <div className="h-6 w-20" />
         </div>
@@ -94,7 +94,7 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             <img src="/logo-trimmed.png" alt="Dominion" className="h-7 w-7" />
-            <span className="text-lg text-foreground" style={{ fontFamily: '"MachineLearning", sans-serif' }}>Dominion</span>
+            <span className="text-lg text-foreground" style={{ fontFamily: "var(--font-brand), sans-serif" }}>Dominion</span>
           </div>
           <div className="hidden sm:block h-6 w-px bg-border" />
           <span className="hidden sm:block text-sm text-muted-foreground">{greeting}</span>

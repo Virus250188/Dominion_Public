@@ -426,13 +426,6 @@
 
 /* ===== Base layer ===== */
 @layer base {
-  @font-face {
-    font-family: "MachineLearning";
-    src: url("/fonts/MachineLearning.otf") format("opentype");
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-  }
   * {
     @apply border-border outline-ring/50;
   }
