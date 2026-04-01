@@ -32,9 +32,17 @@
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/screenshots/settings.png" alt="Settings page with theme selection, background options, and layout controls" width="700" />
+      <img src="docs/screenshots/enhanced-tiles.png" alt="Enhanced Emby tiles in three sizes: 1x1 compact, 2x1 with stats, 2x2 widget with poster carousel" width="700" />
       <br />
-      <em>Settings: themes, backgrounds, layout</em>
+      <em>Enhanced App: Emby in 1x1, 2x1, and 2x2 tile sizes</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/app-dialog.png" alt="App dialog with auto-detected Emby plugin, tile size selection, and color picker" width="350" />
+      <img src="docs/screenshots/settings.png" alt="Settings page with theme selection, background options, and layout controls" width="350" />
+      <br />
+      <em>Left: Add app with auto-detection — Right: Theme & background settings</em>
     </td>
   </tr>
 </table>
