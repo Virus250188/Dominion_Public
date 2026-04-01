@@ -214,7 +214,6 @@ Open **http://localhost:3000** — default login: `admin` / `admin123`
 - [ ] Multi-user support with role-based access
 - [ ] Notification system (webhooks, push)
 - [ ] Public sharing / TV display mode
-- [ ] Mobile-optimized layout
 
 ---
 
