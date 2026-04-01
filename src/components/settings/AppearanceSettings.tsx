@@ -54,18 +54,14 @@ export function AppearanceSettings({
   const [isPending, startTransition] = useTransition();
   const [gridColumns, setGridColumns] = useState(initialColumns);
 
+  // Theme and background changes are persisted to DB by ThemeProvider itself,
+  // so we only need to call the context setters here.
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
-    startTransition(async () => {
-      await updateUserSettings(1, { theme: newTheme });
-    });
   };
 
   const handleBackgroundTypeChange = (type: string) => {
     setBackgroundType(type);
-    startTransition(async () => {
-      await updateUserSettings(1, { backgroundType: type });
-    });
   };
 
   return (
@@ -140,9 +136,6 @@ export function AppearanceSettings({
               <button
                 onClick={() => {
                   setBackground(null);
-                  startTransition(async () => {
-                    await updateUserSettings(1, { background: null, backgroundType: "gradient" });
-                  });
                 }}
                 className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors"
               >
@@ -173,9 +166,6 @@ export function AppearanceSettings({
                     const data = await res.json();
                     if (data.url) {
                       setBackground(data.url);
-                      startTransition(async () => {
-                        await updateUserSettings(1, { background: data.url, backgroundType: "wallpaper" });
-                      });
                     }
                   } catch (err) {
                     console.error("Upload failed:", err);

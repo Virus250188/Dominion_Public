@@ -141,7 +141,7 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
           </Link>
           <div className="h-6 w-px bg-border" />
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
             className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-destructive/20"
             title="Abmelden"
           >
