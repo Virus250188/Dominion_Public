@@ -45,6 +45,7 @@ RUN mkdir -p /data && chown nextjs:nodejs /data
 VOLUME /data
 
 ENV DATABASE_URL="file:/data/dominion.db"
+ENV AUTH_TRUST_HOST=true
 
 USER nextjs
 

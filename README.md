@@ -45,7 +45,8 @@ services:
     volumes:
       - dominion_data:/data
     environment:
-      - AUTH_SECRET=change-me-to-a-random-string
+      - AUTH_SECRET=change-me-to-a-long-random-string
+      - AUTH_TRUST_HOST=true
       - DATABASE_URL=file:/data/dominion.db
     restart: unless-stopped
 
