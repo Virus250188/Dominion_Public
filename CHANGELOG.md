@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.3-alpha (2026-04-01)
+
+### Fixed
+- **Theme & wallpaper sync across browsers/devices** — settings now persist in database, not just localStorage
+- On login, your theme, background type, and wallpaper load from the server — same look on every device
+
+---
+
 ## v1.0.2-alpha (2026-04-01)
 
 ### Fixed
