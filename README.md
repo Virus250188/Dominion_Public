@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="public/Logo_without_bg.png" alt="Dominion" width="200" />
+  <img src="public/Git_banner_text.jpg" alt="Dominion — Self-Hosted Dashboard" width="700" />
 </p>
-
-<h1 align="center">Dominion</h1>
 
 <p align="center">
   <strong>A self-hosted dashboard that brings your services to life.</strong><br />
