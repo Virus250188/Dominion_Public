@@ -1,0 +1,23 @@
+services:
+  dominion:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dominion
+    ports:
+      - "3000:3000"
+    volumes:
+      - dominion_data:/data
+    environment:
+      - AUTH_SECRET=change-me-to-a-random-string
+      - DATABASE_URL=file:/data/dominion.db
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  dominion_data:
