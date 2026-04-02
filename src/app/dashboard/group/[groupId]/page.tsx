@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getGroupWithTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";
 import { getTiles } from "@/lib/queries/tiles";
@@ -14,6 +15,10 @@ interface GroupPageProps {
 }
 
 export default async function GroupPage({ params }: GroupPageProps) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = parseInt(session.user.id, 10);
+
   const { groupId: groupIdStr } = await params;
   const groupId = parseInt(groupIdStr, 10);
 
@@ -23,8 +28,8 @@ export default async function GroupPage({ params }: GroupPageProps) {
 
   const [group, settings, allTiles] = await Promise.all([
     getGroupWithTiles(groupId),
-    getUserSettings(1),
-    getTiles(1),
+    getUserSettings(userId),
+    getTiles(userId),
   ]);
 
   if (!group) {

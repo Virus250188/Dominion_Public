@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.5-alpha (2026-04-02)
+
+### Fixed
+- **Critical: Hardcoded userId=1 replaced with dynamic session ID** — all pages and API routes now read the user ID from the JWT session instead of assuming user 1. This fixes 403 errors on Enhanced tiles and ensures multi-user readiness.
+
+---
+
 ## v1.0.4-alpha (2026-04-01)
 
 ### Fixed

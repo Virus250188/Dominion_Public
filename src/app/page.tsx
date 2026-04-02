@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/Header";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { SearchBar } from "@/components/dashboard/SearchBar";
@@ -10,17 +11,22 @@ import { getUserSettings } from "@/lib/queries/settings";
 import { getSubDashboards } from "@/lib/queries/subdashboards";
 import { getAppConnections } from "@/lib/queries/appConnections";
 import { decrypt } from "@/lib/crypto";
+import { auth } from "@/lib/auth";
 
 export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = parseInt(session.user.id, 10);
+
   const [tiles, foundationApps, searchProviders, groups, groupsWithFullTiles, settings, subDashboards, appConnections] = await Promise.all([
-    getTiles(1),
+    getTiles(userId),
     getFoundationApps(),
     getSearchProviders(),
     getGroups(),
     getGroupsWithFullTiles(),
-    getUserSettings(1),
-    getSubDashboards(1),
-    getAppConnections(1),
+    getUserSettings(userId),
+    getSubDashboards(userId),
+    getAppConnections(userId),
   ]);
 
   const aiConfigured = Boolean(
