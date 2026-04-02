@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getSubDashboardWithData } from "@/lib/queries/subdashboards";
 import { getFoundationApps } from "@/lib/queries/tiles";
 import { getUserSettings } from "@/lib/queries/settings";
@@ -14,6 +15,10 @@ interface SubDashboardPageProps {
 }
 
 export default async function SubDashboardPage({ params }: SubDashboardPageProps) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = parseInt(session.user.id, 10);
+
   const { subId: subIdStr } = await params;
   const subId = parseInt(subIdStr, 10);
 
@@ -24,7 +29,7 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
   const [subDashboard, foundationApps, settings] = await Promise.all([
     getSubDashboardWithData(subId),
     getFoundationApps(),
-    getUserSettings(1),
+    getUserSettings(userId),
   ]);
 
   if (!subDashboard) {

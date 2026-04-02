@@ -1,10 +1,15 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/queries/settings";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const settings = await getUserSettings(1);
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = parseInt(session.user.id, 10);
+  const settings = await getUserSettings(userId);
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">Erscheinungsbild</h1>

@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Load AI config from database
-    const settings = await getUserSettings(1);
+    const userId = parseInt(session.user.id ?? "0", 10);
+    const settings = await getUserSettings(userId);
 
     if (!settings?.aiProvider) {
       return NextResponse.json(
