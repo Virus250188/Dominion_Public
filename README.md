@@ -168,6 +168,7 @@ The plugin handles authentication and API calls — the dashboard handles storag
 | Resource | Description |
 |----------|-------------|
 | [Plugin Development Guide](docs/plugin-development.md) | Complete guide: build, test, publish a plugin |
+| [Dominion MCP Server](https://github.com/Virus250188/Dominion_MCP) | AI-assisted plugin scaffolding, validation, and testing |
 
 ---
 
