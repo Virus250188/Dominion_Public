@@ -1,13 +1,19 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
+import { auth } from "@/lib/auth";
 import { AppConnectionManager, type AppConnectionItem } from "@/components/settings/AppConnectionManager";
 
 export default async function AppsSettingsPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = parseInt(session.user.id, 10);
+
   // Load all AppConnections with their tile count
   const connections = await prisma.appConnection.findMany({
-    where: { userId: 1 },
+    where: { userId },
     orderBy: { name: "asc" },
     include: {
       _count: {

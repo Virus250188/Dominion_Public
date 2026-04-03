@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -304,15 +312,128 @@ export function AppConnectionManager({ initialConnections }: Props) {
     const onChange = (val: string) =>
       setConfigValues((prev) => ({ ...prev, [field.key]: val }));
 
-    return (
-      <Input
-        id={field.key}
-        type={field.type === "password" ? "password" : field.type === "url" ? "url" : "text"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={field.placeholder}
-      />
-    );
+    switch (field.type) {
+      case "textarea":
+        return (
+          <Textarea
+            id={field.key}
+            rows={3}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+          />
+        );
+      case "select":
+        return (
+          <Select value={value} onValueChange={(v) => onChange(v ?? "")}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={field.placeholder || "Waehlen..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options?.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      case "number":
+        return (
+          <Input
+            id={field.key}
+            type="number"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            min={field.min}
+            max={field.max}
+          />
+        );
+      case "oauth": {
+        const isOAuthConnected = Boolean(configValues.accessToken);
+        const oauthField = field.oauth;
+
+        if (isOAuthConnected) {
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-green-400">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                Verbunden
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfigValues((prev) => {
+                    const next = { ...prev };
+                    delete next.accessToken;
+                    delete next.refreshToken;
+                    delete next.expiresAt;
+                    return next;
+                  });
+                }}
+                className="text-xs text-destructive hover:underline"
+              >
+                Trennen
+              </button>
+            </div>
+          );
+        }
+
+        // Need clientId to start OAuth
+        const oauthClientId = configValues.clientId as string;
+        if (!oauthClientId) {
+          return (
+            <p className="text-xs text-muted-foreground">
+              Bitte zuerst Client ID und Secret ausfuellen
+            </p>
+          );
+        }
+
+        const handleOAuthConnect = () => {
+          if (!oauthField) return;
+
+          const state = btoa(JSON.stringify({
+            pluginId: pluginType,
+            connectionId: editingConnection?.id || 0,
+            returnUrl: window.location.href,
+          }));
+
+          const redirectUri = `${window.location.origin}/api/enhanced/oauth/callback`;
+
+          const params = new URLSearchParams({
+            client_id: oauthClientId,
+            redirect_uri: redirectUri,
+            response_type: "code",
+            scope: oauthField.scopes.join(" "),
+            state,
+          });
+
+          window.location.href = `${oauthField.authUrl}?${params.toString()}`;
+        };
+
+        return (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleOAuthConnect}
+            className="w-full"
+          >
+            {field.label}
+          </Button>
+        );
+      }
+      default:
+        return (
+          <Input
+            id={field.key}
+            type={field.type === "password" ? "password" : field.type === "url" ? "url" : "text"}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+          />
+        );
+    }
   };
 
   return (

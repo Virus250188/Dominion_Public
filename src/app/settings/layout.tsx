@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Palette, AppWindow, Database, ArrowLeft, Sparkles } from "lucide-react";
+import { Palette, AppWindow, Upload, Database, ArrowLeft, Sparkles } from "lucide-react";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -31,6 +31,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         >
           <AppWindow className="h-4 w-4" />
           Apps verwalten
+        </Link>
+        <Link
+          href="/settings/plugins"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors"
+        >
+          <Upload className="h-4 w-4" />
+          Plugin Upload
         </Link>
         <Link
           href="/settings/system"
