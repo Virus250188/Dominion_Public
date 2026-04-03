@@ -98,6 +98,8 @@ npm run dev
 
 Your plugin now appears in the tile dialog when adding a new app. Alternatively, you can ZIP the folder and upload it via **Einstellungen > Plugin Upload**.
 
+> **Tip:** Use the [Dominion MCP Server](https://github.com/Virus250188/Dominion_MCP) to scaffold, validate, and test plugins with AI assistance.
+
 ---
 
 ## 2. Plugin Manifest (`plugin.manifest.json`)
