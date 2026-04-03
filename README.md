@@ -167,7 +167,7 @@ The plugin handles authentication and API calls — the dashboard handles storag
 |----------|-------------|
 | [Plugin Development Guide](docs/plugin-development.md) | Complete guide: build, test, publish a plugin |
 | [Enhanced Apps Catalog](docs/enhanced-apps/) | Available plugins and their configuration |
-| [Plugin Framework Docs](ENHANCED_FRAMEWORK.md) | Architecture deep-dive for contributors |
+| [Plugin Framework Docs](docs/ENHANCED_FRAMEWORK.md) | Architecture deep-dive for contributors |
 
 ---
 
