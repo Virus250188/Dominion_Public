@@ -78,3 +78,10 @@ HANDOVER.md
 Ideen.txt
 PLAN-*.md
 AGENTS.md
+
+# Internal docs (keep locally, not on public GitHub)
+docs/CLAUDE.md
+docs/ENHANCED_FRAMEWORK.md
+docs/PLUGINS.md
+docs/enhanced-apps/
+docs/superpowers/
