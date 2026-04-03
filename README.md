@@ -18,7 +18,7 @@
   <img src="docs/screenshots/dashboard.png" alt="Dominion Dashboard with app tiles and animated Prism background" width="750" />
 </p>
 
-> **Alpha — Built in public.** Dominion is functional and self-hostable via Docker, but still evolving fast. We're looking for **testers** to try it out and **developers** to build Enhanced App plugins. Expect rough edges, breaking changes, and rapid iteration. [Open an issue](https://github.com/Virus250188/Dominion_Public/issues) or check the [Plugin Development Guide](docs/plugin-development.md) to get involved.
+> **Alpha — Functional, self-hostable, evolving fast.** Dominion is a real application with auth, encrypted storage, and a plugin system — not a mockup. We ship quickly and break things along the way. Looking for **testers** to try it and **developers** to build Enhanced App plugins. [Open an issue](https://github.com/Virus250188/Dominion_Public/issues) or check the [Plugin Development Guide](docs/plugin-development.md) to get involved.
 
 ---
 
@@ -241,5 +241,5 @@ Found a bug or have an idea? [Open an issue](https://github.com/Virus250188/Domi
 
 <p align="center">
   <img src="public/logo-trimmed.png" alt="Dominion" width="40" /><br />
-  <sub>Built with Next.js and Claude</sub>
+  <sub>AI-assisted development · Fast-iterating alpha · Built in public</sub>
 </p>
