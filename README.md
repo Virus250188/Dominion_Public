@@ -18,6 +18,8 @@
   <img src="docs/screenshots/dashboard.png" alt="Dominion Dashboard with app tiles and animated Prism background" width="750" />
 </p>
 
+> **Alpha — Built in public.** Dominion is functional and self-hostable via Docker, but still evolving fast. We're looking for **testers** to try it out and **developers** to build Enhanced App plugins. Expect rough edges, breaking changes, and rapid iteration. [Open an issue](https://github.com/Virus250188/Dominion_Public/issues) or check the [Plugin Development Guide](docs/plugin-development.md) to get involved.
+
 ---
 
 ## Why Dominion?
