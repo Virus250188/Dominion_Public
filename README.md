@@ -139,26 +139,34 @@ This feature is experimental and will evolve in future releases.
 
 ## Enhanced Apps
 
-Enhanced Apps are the heart of Dominion's plugin system. Each plugin is a self-contained TypeScript module that defines:
+Enhanced Apps are the heart of Dominion's plugin system. Each plugin is a self-contained TypeScript module that connects to your services and displays live data on dashboard tiles.
 
-- **Metadata** — name, icon, color, category, description
-- **Config fields** — what the user needs to provide (URL, API key, etc.)
-- **Stat options** — what data to fetch and display
-- **Size hints** — how to render at 1x1, 2x1, and 2x2
-- **Widget component** *(optional)* — a React component for rich 2x2 rendering
+### How it works
 
-```
-src/plugins/builtin/
-  emby/
-    index.ts          ← everything in one file
-```
+1. Plugin defines **what credentials it needs** (API key, username/password, or OAuth)
+2. Dashboard **stores credentials encrypted** (AES-256-GCM) and passes them to the plugin
+3. Plugin **fetches data** from your service and returns formatted stats
+4. Dashboard **renders the data** on tiles in up to 3 sizes
 
-Plugins are validated on startup, registered in the global registry, and available in the UI automatically. No core code changes needed.
+The plugin handles authentication and API calls — the dashboard handles storage, encryption, and display.
+
+### Authentication support
+
+| Method | Use case | ConfigField type |
+|--------|----------|-----------------|
+| **API Key** | Most self-hosted services (Emby, Proxmox, Pi-hole, ...) | `password` |
+| **Username & Password** | Basic Auth services | `text` + `password` |
+| **OAuth** | Third-party services (Spotify, GitHub, Google) | `oauth` |
+
+### Plugin installation
+
+- **Developers**: Place plugin folder in `src/plugins/community/` → auto-discovered on build
+- **Users**: Upload ZIP via **Einstellungen > Plugin Upload** → validated and installed automatically
 
 | Resource | Description |
 |----------|-------------|
+| [Plugin Development Guide](docs/plugin-development.md) | Complete guide: build, test, publish a plugin |
 | [Enhanced Apps Catalog](docs/enhanced-apps/) | Available plugins and their configuration |
-| [Plugin Development Guide](docs/plugin-development.md) | How to build and contribute a plugin |
 | [Plugin Framework Docs](ENHANCED_FRAMEWORK.md) | Architecture deep-dive for contributors |
 
 ---
