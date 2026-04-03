@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { getPlugin } from "@/plugins/registry";
 import { validateStats } from "@/plugins/validator";
-import { decrypt } from "@/lib/crypto";
+import { decrypt, encrypt } from "@/lib/crypto";
 import type { PluginConfig } from "@/plugins/types";
 import { logger } from "@/lib/logger";
 
@@ -80,6 +80,39 @@ export async function GET(
       }
     } catch {
       return NextResponse.json({ items: [], status: "error", error: "Invalid config" }, { status: 400 });
+    }
+
+    // Token refresh: if plugin supports it and token is expired
+    if (plugin.refreshToken && config.expiresAt) {
+      const expiresAt = Number(config.expiresAt);
+      const now = Math.floor(Date.now() / 1000);
+      if (now >= expiresAt - 60) { // Refresh 60s before expiry
+        try {
+          const newTokens = await plugin.refreshToken(config as PluginConfig);
+          config.accessToken = newTokens.accessToken;
+          if (newTokens.refreshToken) config.refreshToken = newTokens.refreshToken;
+          if (newTokens.expiresAt) config.expiresAt = newTokens.expiresAt;
+
+          // Persist new tokens to AppConnection
+          if (tile.appConnection) {
+            const existingConfig = tile.appConnection.config
+              ? JSON.parse(decrypt(tile.appConnection.config))
+              : {};
+            const updatedConfig = {
+              ...existingConfig,
+              accessToken: newTokens.accessToken,
+              ...(newTokens.refreshToken && { refreshToken: newTokens.refreshToken }),
+              ...(newTokens.expiresAt && { expiresAt: newTokens.expiresAt }),
+            };
+            await prisma.appConnection.update({
+              where: { id: tile.appConnection.id },
+              data: { config: encrypt(JSON.stringify(updatedConfig)) },
+            });
+          }
+        } catch (e) {
+          logger.warn("enhanced", `Token refresh failed for ${tile.enhancedType}`, { error: (e as Error).message });
+        }
+      }
     }
 
     const rawStats = await plugin.fetchStats(config);

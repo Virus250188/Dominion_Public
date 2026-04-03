@@ -710,6 +710,79 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
             max={field.max}
           />
         );
+      case "oauth": {
+        const isOAuthConnected = Boolean(enhancedConfig.accessToken);
+        const oauthField = field.oauth;
+
+        if (isOAuthConnected) {
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-green-400">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                Verbunden
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEnhancedConfig((prev) => {
+                    const next = { ...prev };
+                    delete next.accessToken;
+                    delete next.refreshToken;
+                    delete next.expiresAt;
+                    return next;
+                  });
+                }}
+                className="text-xs text-destructive hover:underline"
+              >
+                Trennen
+              </button>
+            </div>
+          );
+        }
+
+        // Need clientId to start OAuth
+        const oauthClientId = enhancedConfig.clientId as string;
+        if (!oauthClientId) {
+          return (
+            <p className="text-xs text-muted-foreground">
+              Bitte zuerst Client ID und Secret ausfuellen
+            </p>
+          );
+        }
+
+        const handleOAuthConnect = () => {
+          if (!oauthField) return;
+
+          const state = btoa(JSON.stringify({
+            pluginId: enhancedType,
+            connectionId: linkedConnectionId || 0,
+            returnUrl: window.location.href,
+          }));
+
+          const redirectUri = `${window.location.origin}/api/enhanced/oauth/callback`;
+
+          const params = new URLSearchParams({
+            client_id: oauthClientId,
+            redirect_uri: redirectUri,
+            response_type: "code",
+            scope: oauthField.scopes.join(" "),
+            state,
+          });
+
+          window.location.href = `${oauthField.authUrl}?${params.toString()}`;
+        };
+
+        return (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleOAuthConnect}
+            className="w-full"
+          >
+            {field.label}
+          </Button>
+        );
+      }
       default:
         return (
           <Input

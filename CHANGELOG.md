@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.0.6-alpha (2026-04-03)
+
+### Added
+- **OAuth framework** for Enhanced Apps — plugins can declare OAuth config fields, shared callback route handles token exchange, automatic token refresh before fetchStats
+- **Plugin Upload** (Settings > Plugin Upload) — ZIP upload with drag & drop, manifest validation, automatic extraction and registration
+- **Plugin Manifest spec** (`plugin.manifest.json`) — required metadata for community plugins with 9-point validation
+- **Server Restart** button in Settings > System — two-step confirmation, auto-reload when server is back
+- **Auto-reload after restart** — browser polls `/api/health` and refreshes when server responds
+
+### Fixed
+- **Last hardcoded userId=1** in Settings > Apps — connections now load correctly for all users
+- **ConfigField validator** now checks field types against whitelist
+- **AppConnectionManager** now renders all field types (textarea, select, number, oauth) instead of just text/password/url
+
+---
+
 ## v1.0.5-alpha (2026-04-02)
 
 ### Fixed

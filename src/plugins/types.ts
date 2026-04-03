@@ -50,13 +50,19 @@ export interface PluginConfig {
 export interface ConfigField {
   key: string;
   label: string;
-  type: "text" | "password" | "url" | "textarea" | "select" | "number";
+  type: "text" | "password" | "url" | "textarea" | "select" | "number" | "oauth";
   placeholder?: string;
   required?: boolean;
   description?: string;
   options?: { label: string; value: string }[];
   min?: number;
   max?: number;
+  oauth?: {
+    authUrl: string;
+    tokenUrl: string;
+    scopes: string[];
+    pkce?: boolean;
+  };
 }
 
 // ─── Stat Options ──────────────────────────────────────────────────────────
@@ -106,6 +112,16 @@ export interface AppPlugin {
   fetchStats(config: PluginConfig): Promise<PluginStats>;
   testConnection(config: PluginConfig): Promise<{ ok: boolean; message: string }>;
   crawlEntities?(config: PluginConfig): Promise<{ groups: CrawlEntityGroup[] }>;
+  exchangeToken?(code: string, redirectUri: string, config: PluginConfig): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
+  }>;
+  refreshToken?(config: PluginConfig): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
+  }>;
 }
 
 // ─── Backward Compatibility ────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { exportData, importData } from "@/lib/actions/settings";
 import { changePassword } from "@/lib/actions/auth";
-import { Download, Upload, AlertCircle, CheckCircle2, Lock } from "lucide-react";
+import { Download, Upload, AlertCircle, CheckCircle2, Lock, RotateCcw } from "lucide-react";
 
 export function SystemSettings() {
   const [isPending, startTransition] = useTransition();
@@ -17,6 +17,35 @@ export function SystemSettings() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Restart state
+  const [restartConfirm, setRestartConfirm] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const handleRestart = async () => {
+    if (!restartConfirm) {
+      setRestartConfirm(true);
+      return;
+    }
+    setIsRestarting(true);
+    try {
+      await fetch("/api/system/restart", { method: "POST" });
+    } catch {
+      // Expected — server is shutting down
+    }
+    // Poll until server is back, then reload
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch("/api/health", { cache: "no-store" });
+        if (res.ok) {
+          clearInterval(poll);
+          window.location.reload();
+        }
+      } catch {
+        // Server still down, keep polling
+      }
+    }, 2000);
+  };
 
   const handleChangePassword = () => {
     setPwMessage(null);
@@ -182,6 +211,39 @@ export function SystemSettings() {
           <div>Stack: Next.js, TypeScript, Tailwind CSS, SQLite</div>
           <div>Version: 0.9.5</div>
         </div>
+      </section>
+
+      {/* Server Neustart */}
+      <section className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Server Neustart</h2>
+        <p className="text-sm text-muted-foreground">
+          Startet den Dashboard-Server neu. Notwendig nach Plugin-Installation.
+        </p>
+        {isRestarting ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RotateCcw className="h-4 w-4 animate-spin" />
+            Server wird neu gestartet...
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button
+              variant="destructive"
+              onClick={handleRestart}
+              disabled={isRestarting}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {restartConfirm ? "Bist du sicher?" : "Server neustarten"}
+            </Button>
+            {restartConfirm && (
+              <Button
+                variant="ghost"
+                onClick={() => setRestartConfirm(false)}
+              >
+                Abbrechen
+              </Button>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

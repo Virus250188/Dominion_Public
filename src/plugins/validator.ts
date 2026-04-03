@@ -1,6 +1,10 @@
-import type { AppPlugin, PluginStats, StatItem, TileSize } from "./types";
+import type { AppPlugin, ConfigField, PluginStats, StatItem, TileSize } from "./types";
+import { logger } from "@/lib/logger";
 
 const VALID_SIZES: TileSize[] = ["1x1", "2x1", "2x2"];
+const VALID_CONFIG_FIELD_TYPES: ConfigField["type"][] = [
+  "text", "password", "url", "textarea", "select", "number", "oauth",
+];
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const MAX_STAT_ITEMS = 6;
 
@@ -28,6 +32,12 @@ export function validatePlugin(plugin: AppPlugin): string[] {
 
   if (!Array.isArray(plugin.configFields)) {
     errors.push("configFields must be an array");
+  } else {
+    for (const field of plugin.configFields) {
+      if (!VALID_CONFIG_FIELD_TYPES.includes(field.type as ConfigField["type"])) {
+        logger.warn("plugin-validator", `Plugin "${metadata.id}" has configField "${field.key}" with unknown type "${field.type}" — this may cause rendering issues`);
+      }
+    }
   }
 
   if (!Array.isArray(plugin.supportedSizes) || plugin.supportedSizes.length === 0) {
