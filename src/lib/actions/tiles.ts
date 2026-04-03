@@ -60,6 +60,7 @@ function validateEnhancedTile(data: {
 
     const missingFields = plugin.configFields
       .filter((f) => f.required)
+      .filter((f) => f.type !== "oauth") // OAuth tokens stored in AppConnection, not config
       .filter((f) => !(data.hasAppConnection && CONNECTION_KEYS.has(f.key)))
       .filter((f) => !config[f.key])
       .map((f) => f.label);

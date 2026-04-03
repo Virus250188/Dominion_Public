@@ -750,12 +750,39 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
           );
         }
 
-        const handleOAuthConnect = () => {
+        const handleOAuthConnect = async () => {
           if (!oauthField) return;
+
+          // Pre-create AppConnection if not linked yet (OAuth needs a real connectionId)
+          let connId = linkedConnectionId;
+          if (!connId && connectionMode === "new") {
+            try {
+              const connectionConfig: Record<string, string> = {};
+              if (enhancedConfig.clientId) connectionConfig.clientId = String(enhancedConfig.clientId);
+              if (enhancedConfig.clientSecret) connectionConfig.clientSecret = String(enhancedConfig.clientSecret);
+
+              const newConn = await createAppConnection({
+                pluginType: enhancedType,
+                name: title || "Spotify",
+                icon: icon || null,
+                customIconSvg: customIconSvg || null,
+                color,
+                url: null,
+                config: JSON.stringify(connectionConfig),
+                description: description || null,
+              });
+              connId = newConn.id;
+              setLinkedConnectionId(connId);
+              setConnectionMode("select");
+            } catch (err) {
+              console.error("Failed to pre-create connection:", err);
+              return;
+            }
+          }
 
           const state = btoa(JSON.stringify({
             pluginId: enhancedType,
-            connectionId: linkedConnectionId || 0,
+            connectionId: connId || 0,
             returnUrl: window.location.href,
           }));
 
@@ -769,7 +796,8 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
             state,
           });
 
-          window.location.href = `${oauthField.authUrl}?${params.toString()}`;
+          // Open in new tab so the dialog stays open
+          window.open(`${oauthField.authUrl}?${params.toString()}`, "_blank");
         };
 
         return (
@@ -1204,7 +1232,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                   // Split config fields: connection fields shown immediately, feature fields after test
                   const CONNECTION_KEYS = new Set(["apiUrl", "apiKey", "accessToken", "username", "password"]);
                   const connectionFields = matchedPlugin.configFields.filter(
-                    (f) => CONNECTION_KEYS.has(f.key) || f.required
+                    (f) => CONNECTION_KEYS.has(f.key) || f.required || f.type === "oauth"
                   );
                   // Widget-only fields: only show when current size has widget layout
                   const WIDGET_ONLY_KEYS = new Set(["carouselSpeed", "carouselItems"]);
@@ -1212,7 +1240,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                   const isWidgetLayout = currentHint?.layout === "widget";
 
                   const featureFields = matchedPlugin.configFields.filter(
-                    (f) => !CONNECTION_KEYS.has(f.key) && !f.required
+                    (f) => !CONNECTION_KEYS.has(f.key) && !f.required && f.type !== "oauth"
                   ).filter(
                     (f) => isWidgetLayout || !WIDGET_ONLY_KEYS.has(f.key)
                   );
