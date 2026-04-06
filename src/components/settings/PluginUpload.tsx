@@ -25,6 +25,8 @@ interface PluginManifest {
 interface UploadResult {
   success: boolean;
   plugin?: PluginManifest;
+  action?: "install" | "update";
+  previousVersion?: string;
   warnings?: string[];
   errors?: string[];
   error?: string;
@@ -40,6 +42,7 @@ export function PluginUpload() {
   const [installedPlugins, setInstalledPlugins] = useState<PluginManifest[]>([]);
   const [isLoadingPlugins, setIsLoadingPlugins] = useState(true);
   const [pluginLoadError, setPluginLoadError] = useState(false);
+  const [deletingPluginId, setDeletingPluginId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch installed community plugins
@@ -139,21 +142,25 @@ export function PluginUpload() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         // Refresh plugin list
         fetchPlugins();
-        toast.success(`Plugin "${data.plugin?.name}" installiert`);
+        toast.success(
+          data.action === "update"
+            ? `"${data.plugin?.name}" aktualisiert${data.previousVersion ? ` (v${data.previousVersion} -> v${data.plugin?.version})` : ""}`
+            : `"${data.plugin?.name}" installiert`,
+        );
       } else {
         setUploadResult({
           success: false,
           errors: data.errors || [data.error || "Upload fehlgeschlagen."],
           warnings: data.warnings,
         });
-        toast.error("Plugin-Upload fehlgeschlagen");
+        toast.error("Installation fehlgeschlagen");
       }
     } catch {
       setUploadResult({
         success: false,
         errors: ["Netzwerkfehler beim Upload."],
       });
-      toast.error("Netzwerkfehler beim Upload");
+      toast.error("Netzwerkfehler bei der Installation");
     } finally {
       setIsUploading(false);
     }
@@ -180,6 +187,31 @@ export function PluginUpload() {
     }, 2000);
   }, []);
 
+  const handleDelete = useCallback(async (pluginId: string, pluginName: string) => {
+    if (!confirm(`"${pluginName}" wirklich deinstallieren?`)) return;
+
+    setDeletingPluginId(pluginId);
+    try {
+      const res = await fetch("/api/plugins/upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pluginId }),
+      });
+
+      if (res.ok) {
+        toast.success(`"${pluginName}" deinstalliert`);
+        fetchPlugins();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Deinstallation fehlgeschlagen");
+      }
+    } catch {
+      toast.error("Netzwerkfehler beim Deinstallieren");
+    } finally {
+      setDeletingPluginId(null);
+    }
+  }, [fetchPlugins]);
+
   const handleDismissResult = useCallback(() => {
     setUploadResult(null);
   }, []);
@@ -192,10 +224,10 @@ export function PluginUpload() {
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
           <div>
             <h3 className="text-sm font-semibold text-amber-300">
-              Community Plugins — Auf eigene Verantwortung
+              Community Apps — Auf eigene Verantwortung
             </h3>
             <p className="mt-1 text-sm text-amber-200/80">
-              Community Plugins werden nicht von Dominion geprueft. Installiere nur Plugins aus
+              Community Apps werden nicht von Dominion geprueft. Installiere nur Apps aus
               vertrauenswuerdigen Quellen. Stelle sicher, dass du kein Legacy-Produkt hochlaedst.
             </p>
           </div>
@@ -204,9 +236,9 @@ export function PluginUpload() {
 
       {/* Upload Area */}
       <section className="glass-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Plugin hochladen</h2>
+        <h2 className="text-lg font-semibold text-foreground">App installieren</h2>
         <p className="text-sm text-muted-foreground">
-          Lade ein Community Plugin als ZIP-Datei hoch. Das Plugin muss eine{" "}
+          Lade eine Community App als ZIP-Datei hoch. Die App muss eine{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">plugin.manifest.json</code>{" "}
           und eine{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">index.ts</code>{" "}
@@ -294,7 +326,7 @@ export function PluginUpload() {
               <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-emerald-300">
-                  Plugin erfolgreich installiert
+                  {uploadResult.action === "update" ? "App erfolgreich aktualisiert" : "App erfolgreich installiert"}
                 </h3>
                 <div className="mt-2 space-y-1 text-sm text-emerald-200/80">
                   <p><span className="text-emerald-300/60">Name:</span> {uploadResult.plugin.name}</p>
@@ -339,7 +371,7 @@ export function PluginUpload() {
               <AlertCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-destructive">
-                  Plugin-Validierung fehlgeschlagen
+                  Validierung fehlgeschlagen
                 </h3>
                 {uploadResult.errors && uploadResult.errors.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm text-destructive/80">
@@ -369,24 +401,24 @@ export function PluginUpload() {
 
       {/* Installed Community Plugins */}
       <section className="glass-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Installierte Community Plugins</h2>
+        <h2 className="text-lg font-semibold text-foreground">Installierte Community Apps</h2>
 
         {isLoadingPlugins ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Plugins werden geladen...
+            Apps werden geladen...
           </div>
         ) : pluginLoadError ? (
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="h-4 w-4" />
-            Fehler beim Laden der Plugins.
+            Fehler beim Laden der Apps.
             <button onClick={fetchPlugins} className="underline hover:no-underline">
               Erneut versuchen
             </button>
           </div>
         ) : installedPlugins.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Keine Community Plugins installiert.
+            Keine Community Apps installiert.
           </p>
         ) : (
           <div className="space-y-2">
@@ -405,6 +437,19 @@ export function PluginUpload() {
                     </p>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => handleDelete(plugin.id, plugin.name)}
+                  disabled={deletingPluginId === plugin.id}
+                  title="Deinstallieren"
+                >
+                  {deletingPluginId === plugin.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  )}
+                </Button>
               </div>
             ))}
           </div>
