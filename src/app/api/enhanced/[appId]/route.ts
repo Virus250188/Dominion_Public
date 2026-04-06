@@ -122,8 +122,9 @@ export async function GET(
   } catch (err) {
     const message = (err as Error).message;
     logger.error("enhanced-api", "Failed to fetch stats", { error: message });
+    // Fix 6: Don't leak raw error details to client
     return NextResponse.json(
-      { items: [], status: "error", error: message },
+      { items: [], status: "error", error: "Failed to fetch stats" },
       { status: 500 }
     );
   }

@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
 
     const plugin = getPlugin(enhancedType);
     if (!plugin) {
-      return NextResponse.json({ success: false, error: "Unbekannter App-Typ" });
+      return NextResponse.json(
+        { success: false, error: "Unbekannter App-Typ" },
+        { status: 404 }
+      );
     }
 
     // Validate that required config fields are present
@@ -52,10 +55,13 @@ export async function POST(request: NextRequest) {
       .map((f) => f.label);
 
     if (missingFields.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: `Missing required fields: ${missingFields.join(", ")}`,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Missing required fields: ${missingFields.join(", ")}`,
+        },
+        { status: 400 }
+      );
     }
 
     const result = await plugin.testConnection(config);
@@ -66,15 +72,21 @@ export async function POST(request: NextRequest) {
         message: result.message,
       });
     } else {
-      return NextResponse.json({
-        success: false,
-        error: result.message,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.message,
+        },
+        { status: 422 }
+      );
     }
   } catch (err) {
-    return NextResponse.json({
-      success: false,
-      error: (err as Error).message,
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: (err as Error).message,
+      },
+      { status: 500 }
+    );
   }
 }

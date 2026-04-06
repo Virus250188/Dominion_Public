@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
 
     const plugin = getPlugin(enhancedType);
     if (!plugin) {
-      return NextResponse.json({
-        success: false,
-        error: "Unbekannter App-Typ",
-      });
+      return NextResponse.json(
+        { success: false, error: "Unbekannter App-Typ" },
+        { status: 404 }
+      );
     }
 
     // If plugin has a crawl method, use it
@@ -57,21 +57,21 @@ export async function POST(request: NextRequest) {
         const result = await plugin.crawlEntities(config);
         return NextResponse.json({ success: true, ...result });
       } catch (err) {
-        return NextResponse.json({
-          success: false,
-          error: (err as Error).message,
-        });
+        return NextResponse.json(
+          { success: false, error: (err as Error).message },
+          { status: 500 }
+        );
       }
     }
 
-    return NextResponse.json({
-      success: false,
-      error: "Plugin unterstuetzt kein Entity-Crawling",
-    });
+    return NextResponse.json(
+      { success: false, error: "Plugin unterstuetzt kein Entity-Crawling" },
+      { status: 400 }
+    );
   } catch (err) {
-    return NextResponse.json({
-      success: false,
-      error: (err as Error).message,
-    });
+    return NextResponse.json(
+      { success: false, error: (err as Error).message },
+      { status: 500 }
+    );
   }
 }

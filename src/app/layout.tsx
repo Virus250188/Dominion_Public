@@ -7,6 +7,7 @@ import { EditModeProvider } from "@/contexts/EditModeContext";
 import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/queries/settings";
 import type { Theme } from "@/types/theme";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -82,6 +83,20 @@ export default async function RootLayout({
           <EditModeProvider>
             <BackgroundLayer />
             {children}
+            <Toaster
+              position="bottom-right"
+              theme="dark"
+              richColors
+              toastOptions={{
+                className: "glass-surface border-border/50",
+                style: {
+                  background: "hsl(var(--card) / 0.85)",
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid hsl(var(--border) / 0.5)",
+                  color: "hsl(var(--foreground))",
+                },
+              }}
+            />
           </EditModeProvider>
         </ThemeProvider>
       </body>

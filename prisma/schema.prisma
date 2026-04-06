@@ -64,7 +64,7 @@ model TileGroup {
   color          String        @default("#6366f1")
   order          Int           @default(0)
   collapsed      Boolean       @default(false)
-  userId         Int           @default(1)
+  userId         Int
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   tiles          Tile[]
   groupTiles     GroupTile[]

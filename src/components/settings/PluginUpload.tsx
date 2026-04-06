@@ -12,6 +12,7 @@ import {
   Trash2,
   RotateCcw,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface PluginManifest {
   id: string;
@@ -38,18 +39,22 @@ export function PluginUpload() {
   const [isRestarting, setIsRestarting] = useState(false);
   const [installedPlugins, setInstalledPlugins] = useState<PluginManifest[]>([]);
   const [isLoadingPlugins, setIsLoadingPlugins] = useState(true);
+  const [pluginLoadError, setPluginLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch installed community plugins
   const fetchPlugins = useCallback(async () => {
+    setPluginLoadError(false);
     try {
       const res = await fetch("/api/plugins/upload");
       if (res.ok) {
         const data = await res.json();
         setInstalledPlugins(data.plugins || []);
+      } else {
+        setPluginLoadError(true);
       }
     } catch {
-      // Silently fail
+      setPluginLoadError(true);
     } finally {
       setIsLoadingPlugins(false);
     }
@@ -134,18 +139,21 @@ export function PluginUpload() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         // Refresh plugin list
         fetchPlugins();
+        toast.success(`Plugin "${data.plugin?.name}" installiert`);
       } else {
         setUploadResult({
           success: false,
           errors: data.errors || [data.error || "Upload fehlgeschlagen."],
           warnings: data.warnings,
         });
+        toast.error("Plugin-Upload fehlgeschlagen");
       }
     } catch {
       setUploadResult({
         success: false,
         errors: ["Netzwerkfehler beim Upload."],
       });
+      toast.error("Netzwerkfehler beim Upload");
     } finally {
       setIsUploading(false);
     }
@@ -367,6 +375,14 @@ export function PluginUpload() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Plugins werden geladen...
+          </div>
+        ) : pluginLoadError ? (
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            Fehler beim Laden der Plugins.
+            <button onClick={fetchPlugins} className="underline hover:no-underline">
+              Erneut versuchen
+            </button>
           </div>
         ) : installedPlugins.length === 0 ? (
           <p className="text-sm text-muted-foreground">

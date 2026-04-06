@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Set up timeout
+    // Set up timeout — abort the stream reader if it takes too long
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
       const decoder = new TextDecoder();
       let result = "";
       let chunks = 0;
+
+      // Abort the reader when the timeout fires
+      controller.signal.addEventListener("abort", () => reader.cancel(), { once: true });
 
       while (chunks < 20) {
         const { done, value } = await reader.read();

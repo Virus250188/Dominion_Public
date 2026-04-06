@@ -72,10 +72,11 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
-    const message = (err as Error).message || "Interner Serverfehler";
+    const message = (err as Error).message || "Unknown error";
     logger.error("ai-chat", "Chat request failed", { provider: "unknown", error: message });
+    // Fix 6: Don't leak raw error details to client
     return NextResponse.json(
-      { error: message },
+      { error: "KI-Anfrage fehlgeschlagen. Bitte Konfiguration pruefen." },
       { status: 500 }
     );
   }

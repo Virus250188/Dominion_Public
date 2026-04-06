@@ -9,8 +9,35 @@ const CACHE_TTL_MS = 60_000; // 60 seconds
 const REQUEST_TIMEOUT_MS = 3_000; // 3 seconds
 const MAX_CONCURRENT = 10;
 
-// HTTPS agent that accepts self-signed certificates (common in self-hosted setups)
-const insecureAgent = new https.Agent({ rejectUnauthorized: false });
+// Fix 9: SSRF protection -- block cloud metadata and localhost, but ALLOW private IPs
+// (the dashboard is designed to check local services like TrueNAS, Emby, HA, etc.)
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost",
+  "metadata.google.internal",
+  "metadata.internal",
+]);
+
+function isUrlBlocked(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+
+    // Only allow http(s) protocols
+    if (url.protocol !== "http:" && url.protocol !== "https:") return true;
+
+    // Block known metadata/localhost hostnames
+    if (BLOCKED_HOSTNAMES.has(url.hostname.toLowerCase())) return true;
+
+    // Block loopback IPs
+    if (url.hostname === "127.0.0.1" || url.hostname === "::1" || url.hostname === "0.0.0.0") return true;
+
+    // Block cloud metadata IP range (169.254.169.254 and link-local)
+    if (url.hostname.startsWith("169.254.")) return true;
+
+    return false;
+  } catch {
+    return true; // Invalid URL = blocked
+  }
+}
 
 interface HealthResult {
   online: boolean;
@@ -128,9 +155,20 @@ export async function POST(request: Request) {
     const urlsToCheck: string[] = [];
     const now = new Date();
 
+    // Fix 9: Filter out blocked URLs (cloud metadata, localhost)
+    const safeUrls: string[] = [];
+    for (const url of limitedUrls) {
+      if (isUrlBlocked(url)) {
+        logger.warn("health", `SSRF protection: blocked health check for ${url}`);
+        results[url] = { online: false, latencyMs: null };
+      } else {
+        safeUrls.push(url);
+      }
+    }
+
     // Check cache for each URL
     const cachedEntries = await prisma.healthStatus.findMany({
-      where: { url: { in: limitedUrls } },
+      where: { url: { in: safeUrls } },
     });
 
     const cacheMap = new Map<string, typeof cachedEntries[number]>();
@@ -138,7 +176,7 @@ export async function POST(request: Request) {
       cacheMap.set(entry.url, entry);
     }
 
-    for (const url of limitedUrls) {
+    for (const url of safeUrls) {
       const cached = cacheMap.get(url);
       if (cached && now.getTime() - cached.lastCheck.getTime() < CACHE_TTL_MS) {
         results[url] = { online: cached.isOnline, latencyMs: cached.latencyMs };

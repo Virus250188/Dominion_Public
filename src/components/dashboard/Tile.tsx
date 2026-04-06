@@ -55,7 +55,7 @@ function TileContextMenu({
   if (!editMode) return null;
 
   return (
-    <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 z-10">
+    <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 z-10">
       <DropdownMenu onOpenChange={setIsMenuOpen}>
         <DropdownMenuTrigger
           render={<button
@@ -76,7 +76,7 @@ function TileContextMenu({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onTogglePin?.(tile.id, !tile.pinned); }}>
             {tile.pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
-            {tile.pinned ? "Loesung" : "Anheften"}
+            {tile.pinned ? "Nicht mehr anheften" : "Anheften"}
           </DropdownMenuItem>
           {groups && groups.length > 0 && onMoveToGroup && (
             <>

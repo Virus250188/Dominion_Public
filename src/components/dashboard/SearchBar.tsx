@@ -116,6 +116,7 @@ export function SearchBar({ providers, tiles }: SearchBarProps) {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             placeholder="Suchen... (Ctrl+K)"
+            aria-label="Apps suchen"
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           {query && (
@@ -180,6 +181,22 @@ export function SearchBar({ providers, tiles }: SearchBarProps) {
                 <span className="text-foreground">{tile.title}</span>
               </button>
             ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Empty search results */}
+      <AnimatePresence>
+        {filteredTiles.length === 0 && query.length >= 2 && isFocused && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="absolute left-0 right-0 top-full mt-2 z-40 glass-surface rounded-lg p-1"
+          >
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Keine Apps fuer &ldquo;{query}&rdquo; gefunden
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

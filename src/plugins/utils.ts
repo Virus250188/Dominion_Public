@@ -9,7 +9,14 @@ export function getVisibleStats(config: PluginConfig, statOptions: StatOption[])
   if (config.visibleStats) {
     // Handle both formats: native array (new) or JSON string (old DB data)
     if (Array.isArray(config.visibleStats)) return config.visibleStats;
-    if (typeof config.visibleStats === "string") return JSON.parse(config.visibleStats);
+    if (typeof config.visibleStats === "string") {
+      try {
+        const parsed = JSON.parse(config.visibleStats);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // Invalid JSON — fall through to defaults
+      }
+    }
   }
   return statOptions.filter((o) => o.defaultEnabled).map((o) => o.key);
 }
@@ -52,6 +59,8 @@ export function formatBytes(bytes: number): string {
 export function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
   if (days > 0) return `${days}d ${hours}h`;
-  return `${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }

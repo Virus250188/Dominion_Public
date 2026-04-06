@@ -71,11 +71,14 @@ export function ConfirmDialog({
           >
             <div
               ref={dialogRef}
+              role="alertdialog"
+              aria-labelledby="confirm-dialog-title"
+              aria-describedby="confirm-dialog-desc"
               className="glass-card rounded-xl p-6 max-w-sm w-full shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-base font-semibold mb-1">{title}</h3>
-              <p className="text-sm text-muted-foreground mb-5">{message}</p>
+              <h3 id="confirm-dialog-title" className="text-base font-semibold mb-1">{title}</h3>
+              <p id="confirm-dialog-desc" className="text-sm text-muted-foreground mb-5">{message}</p>
 
               <div className="flex justify-end gap-2">
                 <Button

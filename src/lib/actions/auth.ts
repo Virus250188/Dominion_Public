@@ -2,23 +2,7 @@
 
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { auth } from "@/lib/auth";
-
-/**
- * Get the authenticated userId from the session.
- * Throws if not authenticated.
- */
-async function requireUserId(): Promise<number> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized: no active session");
-  }
-  const userId = parseInt(session.user.id, 10);
-  if (isNaN(userId)) {
-    throw new Error("Unauthorized: invalid user ID in session");
-  }
-  return userId;
-}
+import { requireUserId } from "@/lib/actions/requireUserId";
 
 export async function changePassword(data: {
   currentPassword: string;
@@ -69,6 +53,14 @@ export async function createInitialUser(data: {
   const existingCount = await prisma.user.count();
   if (existingCount > 0) {
     throw new Error("Users already exist");
+  }
+
+  if (!data.username || data.username.trim().length === 0) {
+    throw new Error("Benutzername darf nicht leer sein.");
+  }
+
+  if (!data.password || data.password.length < 6) {
+    throw new Error("Das Passwort muss mindestens 6 Zeichen lang sein.");
   }
 
   const hashedPassword = await bcrypt.hash(data.password, 12);
