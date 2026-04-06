@@ -74,12 +74,29 @@ export async function POST(request: NextRequest) {
       manifest.id,
     );
 
-    // Safety: double-check target doesn't exist (validatePluginZip already checks)
-    if (fs.existsSync(targetDir)) {
-      return NextResponse.json(
-        { success: false, errors: [`Plugin "${manifest.id}" existiert bereits.`], warnings: [] },
-        { status: 409 },
-      );
+    // Check if this is an update (plugin already exists)
+    const isUpdate = fs.existsSync(targetDir);
+    let previousVersion: string | undefined;
+
+    if (isUpdate) {
+      // Try to read the old version before deleting
+      try {
+        const oldManifestPath = path.join(targetDir, "plugin.manifest.json");
+        if (fs.existsSync(oldManifestPath)) {
+          const oldManifest = JSON.parse(fs.readFileSync(oldManifestPath, "utf-8"));
+          previousVersion = oldManifest.version;
+        }
+      } catch {
+        // Non-critical — we just won't have the old version info
+      }
+
+      // Remove old plugin directory completely
+      fs.rmSync(targetDir, { recursive: true, force: true });
+
+      logger.info("plugin-upload", `Updating plugin: ${manifest.id}`, {
+        previousVersion: previousVersion ?? "unknown",
+        newVersion: manifest.version,
+      });
     }
 
     const zip = new AdmZip(buffer);
@@ -127,11 +144,18 @@ export async function POST(request: NextRequest) {
       fs.writeFileSync(outputPath, entry.getData());
     }
 
-    logger.info("plugin-upload", `Plugin extracted: ${manifest.id}`, {
-      name: manifest.name,
-      version: manifest.version,
-      author: manifest.author,
-    });
+    logger.info(
+      "plugin-upload",
+      isUpdate
+        ? `Plugin updated: ${manifest.id} (${previousVersion ?? "?"} -> ${manifest.version})`
+        : `Plugin installed: ${manifest.id}`,
+      {
+        name: manifest.name,
+        version: manifest.version,
+        author: manifest.author,
+        action: isUpdate ? "update" : "install",
+      },
+    );
 
     // ── 7. Regenerate community plugin barrel ────────────────────────────
 
@@ -158,6 +182,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       plugin: manifest,
+      action: isUpdate ? "update" : "install",
+      previousVersion: isUpdate ? previousVersion : undefined,
       warnings: result.warnings,
       needsRestart: true,
     });
@@ -167,6 +193,101 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(
       { error: "Interner Serverfehler beim Plugin-Upload." },
+      { status: 500 },
+    );
+  }
+}
+
+/** DELETE /api/plugins/upload — Remove a community plugin */
+export async function DELETE(request: NextRequest) {
+  try {
+    // ── 1. Auth check ──────────────────────────────────────────────────────
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // ── 2. Parse body ──────────────────────────────────────────────────────
+    let body: { pluginId?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Ungueltiger Request-Body." },
+        { status: 400 },
+      );
+    }
+
+    const { pluginId } = body;
+
+    if (!pluginId || typeof pluginId !== "string") {
+      return NextResponse.json(
+        { error: "pluginId ist erforderlich." },
+        { status: 400 },
+      );
+    }
+
+    // ── 3. Validate pluginId format (path traversal prevention) ─────────
+    const KEBAB_CASE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+    if (!KEBAB_CASE_RE.test(pluginId)) {
+      return NextResponse.json(
+        { error: "Ungueltige pluginId. Nur Kleinbuchstaben, Ziffern und Bindestriche erlaubt." },
+        { status: 400 },
+      );
+    }
+
+    // ── 4. Check plugin exists ──────────────────────────────────────────
+    const targetDir = path.join(
+      process.cwd(),
+      "src",
+      "plugins",
+      "community",
+      pluginId,
+    );
+
+    if (!fs.existsSync(targetDir)) {
+      return NextResponse.json(
+        { error: `Plugin "${pluginId}" nicht gefunden.` },
+        { status: 404 },
+      );
+    }
+
+    // ── 5. Delete plugin directory ──────────────────────────────────────
+    fs.rmSync(targetDir, { recursive: true, force: true });
+
+    logger.info("plugin-delete", `Plugin deleted: ${pluginId}`);
+
+    // ── 6. Regenerate community plugin barrel ───────────────────────────
+    let barrelWarning: string | undefined;
+    try {
+      execSync("npx tsx scripts/generate-community-plugins.ts", {
+        cwd: process.cwd(),
+        timeout: 30_000,
+        stdio: "pipe",
+      });
+      logger.info("plugin-delete", "Community plugins barrel regenerated");
+    } catch (genErr) {
+      logger.error("plugin-delete", "Failed to regenerate plugins barrel", {
+        error: (genErr as Error).message,
+      });
+      barrelWarning =
+        "Plugin wurde geloescht, aber die automatische Registrierung schlug fehl. " +
+        'Bitte "npm run generate:plugins" manuell ausfuehren.';
+    }
+
+    // ── 7. Return success ───────────────────────────────────────────────
+    return NextResponse.json({
+      success: true,
+      pluginId,
+      warning: barrelWarning,
+      needsRestart: true,
+    });
+  } catch (err) {
+    logger.error("plugin-delete", "Unexpected error during plugin deletion", {
+      error: (err as Error).message,
+    });
+    return NextResponse.json(
+      { error: "Interner Serverfehler beim Loeschen des Plugins." },
       { status: 500 },
     );
   }

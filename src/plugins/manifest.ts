@@ -204,12 +204,10 @@ export function validatePluginZip(buffer: Buffer): PluginValidationResult {
     }
   }
 
-  // ── 7. Conflict check ─────────────────────────────────────────────────────
+  // ── 7. Conflict check (skipped — updates are now allowed) ──────────────────
 
-  const communityDir = path.join(process.cwd(), "src", "plugins", "community", manifest.id);
-  if (fs.existsSync(communityDir)) {
-    errors.push(`Plugin "${manifest.id}" existiert bereits. Bitte zuerst deinstallieren.`);
-  }
+  // Previously this blocked re-upload. Now the upload route handles
+  // overwrite logic itself, so we only validate the ZIP structure here.
 
   // ── 8. Path traversal already checked above ────────────────────────────────
 
