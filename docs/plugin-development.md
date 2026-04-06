@@ -1336,4 +1336,4 @@ export function MusicStreamWidget({ stats, size }: WidgetProps) {
 
 ## Questions?
 
-Open an issue on the [Dominion GitHub repository](https://github.com) or check the existing community plugins in `src/plugins/community/` for more examples.
+Open an issue on the [Dominion GitHub repository](https://github.com/Virus250188/Dominion_Public/issues) or check the existing community plugins in `src/plugins/community/` for more examples.
