@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { encrypt } from "@/lib/crypto";
+import { encrypt, decrypt } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -112,4 +112,29 @@ export async function deleteAppConnection(id: number) {
 
   revalidatePath("/");
   revalidatePath("/settings/apps");
+}
+
+export async function getAppConnectionConfig(connectionId: number) {
+  const userId = await requireUserId();
+
+  const connection = await prisma.appConnection.findUnique({
+    where: { id: connectionId },
+  });
+
+  if (!connection || connection.userId !== userId) {
+    return null;
+  }
+
+  if (!connection.config) return null;
+
+  try {
+    const decrypted = JSON.parse(decrypt(connection.config));
+    return {
+      accessToken: decrypted.accessToken as string | undefined,
+      refreshToken: decrypted.refreshToken as string | undefined,
+      expiresAt: decrypted.expiresAt as number | undefined,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -121,10 +121,29 @@ export async function GET(request: NextRequest) {
 
     logger.info("oauth-callback", `OAuth tokens saved for plugin ${pluginId}, connection ${connectionId}`);
 
-    // Redirect back to the return URL
-    const successUrl = new URL(returnUrl, origin);
-    successUrl.searchParams.set("oauth_success", "true");
-    return NextResponse.redirect(successUrl);
+    return new NextResponse(
+      `<!DOCTYPE html>
+      <html><head><title>OAuth erfolgreich</title></head>
+      <body style="background:#0a0a0a;color:#fff;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+        <div style="text-align:center">
+          <p style="font-size:1.25rem;margin-bottom:0.5rem">&#10003; Erfolgreich verbunden</p>
+          <p style="color:#888;font-size:0.875rem">Dieses Fenster schliesst sich automatisch...</p>
+        </div>
+        <script>
+          try {
+            const bc = new BroadcastChannel("oauth-callback");
+            bc.postMessage({
+              type: "oauth_success",
+              pluginId: "${pluginId}",
+              connectionId: ${connectionId}
+            });
+            bc.close();
+          } catch(e) {}
+          setTimeout(function() { window.close(); }, 2000);
+        </script>
+      </body></html>`,
+      { status: 200, headers: { "Content-Type": "text/html" } }
+    );
   } catch (e) {
     const message = (e as Error).message;
     logger.error("oauth-callback", `OAuth token exchange failed for ${pluginId}`, { error: message });

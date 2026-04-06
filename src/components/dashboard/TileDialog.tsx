@@ -41,7 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AppIcon } from "./AppIcon";
 import { createGroup } from "@/lib/actions/groups";
-import { createAppConnection } from "@/lib/actions/appConnections";
+import { createAppConnection, getAppConnectionConfig } from "@/lib/actions/appConnections";
 import { getAllPlugins, getPlugin } from "@/plugins/registry";
 import type { AppPlugin, TileSize, ConfigField, CrawlEntityGroup } from "@/plugins/types";
 import { fuzzyMatchIcon } from "@/lib/icons";
@@ -328,6 +328,33 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     setCrawledGroups([]);
     setSelectedEntities([]);
   }, [enhancedConfig.apiUrl, enhancedConfig.apiKey, enhancedConfig.accessToken]);
+
+  // OAuth BroadcastChannel: detect token save from callback tab
+  useEffect(() => {
+    if (!linkedConnectionId) return;
+
+    const bc = new BroadcastChannel("oauth-callback");
+    bc.onmessage = async (event) => {
+      const { type, connectionId } = event.data || {};
+      if (type === "oauth_success" && connectionId === linkedConnectionId) {
+        try {
+          const conn = await getAppConnectionConfig(linkedConnectionId);
+          if (conn?.accessToken) {
+            setEnhancedConfig((prev) => ({
+              ...prev,
+              accessToken: conn.accessToken,
+              refreshToken: conn.refreshToken,
+              expiresAt: conn.expiresAt,
+            }));
+            setConnectionTested(true);
+          }
+        } catch (err) {
+          console.error("Failed to reload OAuth tokens:", err);
+        }
+      }
+    };
+    return () => bc.close();
+  }, [linkedConnectionId]);
 
   // Trim selectedEntities and selectedStats when size changes
   useEffect(() => {
