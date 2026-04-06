@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.0.7-alpha (2026-04-06)
+
+### Security
+- **Fix XSS in OAuth callback** — pluginId/connectionId now properly escaped via JSON.stringify
+- **HMAC-signed OAuth state** — new `/api/enhanced/oauth/state` endpoint prevents state parameter forgery
+- **Open redirect prevention** — OAuth returnUrl validated to be relative paths only
+- **Security headers** — X-Content-Type-Options, X-Frame-Options, Referrer-Policy on all routes
+- **Login rate limiting** — 5 attempts per 15 minutes per IP
+- **SSRF protection** — health check blocks cloud metadata endpoints (169.254.x.x)
+- **File upload hardening** — extension whitelist (jpg, jpeg, png, webp, avif)
+- **Error message sanitization** — no internal details leaked to client
+- **AUTH_SECRET warnings** — visible console warnings when using fallback secret
+
+### Fixed
+- **Critical: createGroup userId bug** — groups now correctly assigned to authenticated user (was defaulting to user 1)
+- **Group ownership checks** — update, delete, reorder, collapse now verify ownership
+- **importData transaction safety** — delete + create wrapped in $transaction (no more partial data loss)
+- **reorderGroupTiles** — switched from Promise.all to $transaction for atomicity
+- **HTTP status codes** — error responses now return proper 400/404/500 instead of 200
+- **AbortController in AI test** — timeout signal now actually cancels the request
+- **formatUptime** — shows minutes for durations under 1 hour (was showing "0h")
+- **getVisibleStats** — JSON.parse wrapped in try/catch
+- **createInitialUser** — password length validation added (min 6 chars)
+- **handleToggleCollapsed** — wrapped in startTransition (matching all other handlers)
+- **Tile unpin label** — "Nicht mehr anheften" instead of "Loesung"
+- **SystemSettings version** — now reads from package.json instead of hardcoded "0.9.5"
+- **OAuth in AppConnectionManager** — opens popup instead of page navigation (no more lost state)
+
+### Added
+- **Toast notifications** (Sonner) — glass-dark styled success/error feedback on all dashboard actions
+- **Empty dashboard onboarding** — welcome screen with guided "Add first app" button for new users
+- **Import confirmation dialog** — warns before overwriting all data
+- **Search empty state** — "Keine Apps gefunden" when no results match
+- **Plugin upload error feedback** — clear error messages instead of silent failures
+
+### Changed
+- **Shared requireUserId()** — extracted to single module (was duplicated in 6 files)
+- **Shared constants** — PRESET_COLORS and GROUP_ICON_MAP extracted (was duplicated in 4/3 files)
+- **Accessibility improvements** — ARIA labels on color swatches, alertdialog role on confirm dialog, keyboard-visible context menus, search input aria-label
+- **Schema migration** — removed dangerous `@default(1)` from TileGroup.userId
+
+---
+
 ## v1.0.6-alpha (2026-04-03)
 
 ### Added
