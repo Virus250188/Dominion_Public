@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { exportData, importData } from "@/lib/actions/settings";
 import { changePassword } from "@/lib/actions/auth";
 import { Download, Upload, AlertCircle, CheckCircle2, Lock, RotateCcw } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 export function SystemSettings() {
   const [isPending, startTransition] = useTransition();
@@ -17,6 +19,10 @@ export function SystemSettings() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Import confirmation state
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [pendingImportData, setPendingImportData] = useState<{ tiles: Array<Record<string, unknown>>; settings: Record<string, unknown> | null } | null>(null);
 
   // Restart state
   const [restartConfirm, setRestartConfirm] = useState(false);
@@ -98,8 +104,10 @@ export function SystemSettings() {
         a.click();
         URL.revokeObjectURL(url);
         setMessage({ type: "success", text: "Backup erfolgreich exportiert!" });
-      } catch (err) {
+        toast.success("Backup exportiert");
+      } catch {
         setMessage({ type: "error", text: "Export fehlgeschlagen." });
+        toast.error("Export fehlgeschlagen");
       }
     });
   };
@@ -114,15 +122,31 @@ export function SystemSettings() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
-        startTransition(async () => {
-          await importData(1, data);
-          setMessage({ type: "success", text: "Daten erfolgreich importiert!" });
-        });
-      } catch (err) {
+        setPendingImportData(data);
+        setImportConfirmOpen(true);
+      } catch {
         setMessage({ type: "error", text: "Import fehlgeschlagen. Ungueltige Datei." });
+        toast.error("Ungueltige Backup-Datei");
       }
     };
     input.click();
+  };
+
+  const executeImport = () => {
+    if (!pendingImportData) return;
+    setImportConfirmOpen(false);
+    startTransition(async () => {
+      try {
+        await importData(1, pendingImportData);
+        setMessage({ type: "success", text: "Daten erfolgreich importiert!" });
+        toast.success("Daten erfolgreich importiert");
+      } catch {
+        setMessage({ type: "error", text: "Import fehlgeschlagen." });
+        toast.error("Import fehlgeschlagen");
+      } finally {
+        setPendingImportData(null);
+      }
+    });
   };
 
   return (
@@ -209,7 +233,7 @@ export function SystemSettings() {
         </p>
         <div className="text-xs text-muted-foreground space-y-1">
           <div>Stack: Next.js, TypeScript, Tailwind CSS, SQLite</div>
-          <div>Version: 0.9.5</div>
+          <div>Version: {process.env.NEXT_PUBLIC_APP_VERSION || "dev"}</div>
         </div>
       </section>
 
@@ -245,6 +269,19 @@ export function SystemSettings() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={importConfirmOpen}
+        title="Import bestaetigen"
+        message="Achtung: Der Import ueberschreibt alle bestehenden Daten (Tiles, Gruppen, Verbindungen). Fortfahren?"
+        confirmLabel="Importieren"
+        cancelLabel="Abbrechen"
+        onConfirm={executeImport}
+        onCancel={() => {
+          setImportConfirmOpen(false);
+          setPendingImportData(null);
+        }}
+      />
     </div>
   );
 }

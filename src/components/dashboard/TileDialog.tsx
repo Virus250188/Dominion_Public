@@ -69,13 +69,7 @@ interface FoundationAppData {
   enhanced: boolean;
 }
 
-// Preset colors
-const PRESET_COLORS = [
-  "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
-  "#ec4899", "#f43f5e", "#ef4444", "#f97316",
-  "#eab308", "#84cc16", "#22c55e", "#14b8a6",
-  "#06b6d4", "#0ea5e9", "#3b82f6", "#64748b",
-];
+import { PRESET_COLORS } from "@/lib/constants";
 
 // Size definitions with new mapping
 const SIZE_DEFS: { size: TileSize; label: string; cols: number; rows: number }[] = [
@@ -807,11 +801,26 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
             }
           }
 
-          const state = btoa(JSON.stringify({
-            pluginId: enhancedType,
-            connectionId: connId || 0,
-            returnUrl: window.location.href,
-          }));
+          // Get server-signed OAuth state (HMAC-signed to prevent CSRF/forgery)
+          const returnPath = window.location.pathname + window.location.search;
+          let state: string;
+          try {
+            const stateRes = await fetch("/api/enhanced/oauth/state", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pluginId: enhancedType,
+                connectionId: connId || 0,
+                returnUrl: returnPath,
+              }),
+            });
+            if (!stateRes.ok) throw new Error("Failed to create OAuth state");
+            const stateData = await stateRes.json();
+            state = stateData.state;
+          } catch (err) {
+            console.error("Failed to create signed OAuth state:", err);
+            return;
+          }
 
           const redirectUri = `${window.location.origin}/api/enhanced/oauth/callback`;
 
@@ -1104,6 +1113,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                 {PRESET_COLORS.map((c, i) => (
                   <button
                     key={`${c}-${i}`}
+                    aria-label={`Farbe ${c}`}
                     className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? "border-white scale-110" : "border-transparent"}`}
                     style={{ backgroundColor: c }}
                     onClick={() => setColor(c)}

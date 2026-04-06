@@ -1,25 +1,9 @@
 "use server";
 
 import prisma from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireUserId } from "@/lib/actions/requireUserId";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
-
-/**
- * Get the authenticated userId from the session.
- * Throws if not authenticated.
- */
-async function requireUserId(): Promise<number> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized: no active session");
-  }
-  const userId = parseInt(session.user.id, 10);
-  if (isNaN(userId)) {
-    throw new Error("Unauthorized: invalid user ID in session");
-  }
-  return userId;
-}
 
 export async function updateUserSettings(
   userId?: number,
@@ -93,47 +77,49 @@ export async function importData(
     throw new Error("No data provided");
   }
 
-  // Delete existing tiles for this user
-  await prisma.tile.deleteMany({ where: { userId: authenticatedUserId } });
+  await prisma.$transaction(async (tx) => {
+    // Delete existing tiles for this user
+    await tx.tile.deleteMany({ where: { userId: authenticatedUserId } });
 
-  // Import tiles
-  for (const tile of data.tiles) {
-    await prisma.tile.create({
-      data: {
-        title: tile.title as string,
-        url: tile.url as string,
-        color: (tile.color as string) || "#6366f1",
-        icon: tile.icon as string | null,
-        description: tile.description as string | null,
-        pinned: (tile.pinned as boolean) || false,
-        order: (tile.order as number) || 0,
-        columnSpan: (tile.columnSpan as number) || 1,
-        rowSpan: (tile.rowSpan as number) || 1,
-        type: (tile.type as string) || "standard",
-        enhancedType: tile.enhancedType as string | null,
-        enhancedConfig: tile.enhancedConfig ? encrypt(tile.enhancedConfig as string) : null,
-        userId: authenticatedUserId,
-      },
-    });
-  }
+    // Import tiles
+    for (const tile of data.tiles) {
+      await tx.tile.create({
+        data: {
+          title: tile.title as string,
+          url: tile.url as string,
+          color: (tile.color as string) || "#6366f1",
+          icon: tile.icon as string | null,
+          description: tile.description as string | null,
+          pinned: (tile.pinned as boolean) || false,
+          order: (tile.order as number) || 0,
+          columnSpan: (tile.columnSpan as number) || 1,
+          rowSpan: (tile.rowSpan as number) || 1,
+          type: (tile.type as string) || "standard",
+          enhancedType: tile.enhancedType as string | null,
+          enhancedConfig: tile.enhancedConfig ? encrypt(tile.enhancedConfig as string) : null,
+          userId: authenticatedUserId,
+        },
+      });
+    }
 
-  // Import settings
-  if (data.settings) {
-    await prisma.userSettings.upsert({
-      where: { userId: authenticatedUserId },
-      update: {
-        theme: data.settings.theme as string | undefined,
-        background: data.settings.background as string | null | undefined,
-        searchProvider: data.settings.searchProvider as string | undefined,
-        gridColumns: data.settings.gridColumns as number | undefined,
-        tileSize: data.settings.tileSize as string | undefined,
-        showSearch: data.settings.showSearch as boolean | undefined,
-        showClock: data.settings.showClock as boolean | undefined,
-        showGreeting: data.settings.showGreeting as boolean | undefined,
-      },
-      create: { userId: authenticatedUserId },
-    });
-  }
+    // Import settings
+    if (data.settings) {
+      await tx.userSettings.upsert({
+        where: { userId: authenticatedUserId },
+        update: {
+          theme: data.settings.theme as string | undefined,
+          background: data.settings.background as string | null | undefined,
+          searchProvider: data.settings.searchProvider as string | undefined,
+          gridColumns: data.settings.gridColumns as number | undefined,
+          tileSize: data.settings.tileSize as string | undefined,
+          showSearch: data.settings.showSearch as boolean | undefined,
+          showClock: data.settings.showClock as boolean | undefined,
+          showGreeting: data.settings.showGreeting as boolean | undefined,
+        },
+        create: { userId: authenticatedUserId },
+      });
+    }
+  });
 
   revalidatePath("/");
   revalidatePath("/settings");

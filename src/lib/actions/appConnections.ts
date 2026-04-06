@@ -1,24 +1,9 @@
 "use server";
 
 import prisma from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireUserId } from "@/lib/actions/requireUserId";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
-
-/**
- * Get the authenticated userId from the session.
- */
-async function requireUserId(): Promise<number> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized: no active session");
-  }
-  const userId = parseInt(session.user.id, 10);
-  if (isNaN(userId)) {
-    throw new Error("Unauthorized: invalid user ID in session");
-  }
-  return userId;
-}
 
 export async function createAppConnection(data: {
   pluginType: string;

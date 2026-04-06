@@ -35,6 +35,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fix 5: Validate file extension against whitelist
+    const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "avif"]);
+    const rawExt = (file.name.split(".").pop() || "").toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(rawExt)) {
+      return NextResponse.json(
+        { error: "Invalid file extension. Allowed: jpg, jpeg, png, webp, avif." },
+        { status: 400 }
+      );
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -42,8 +52,7 @@ export async function POST(request: NextRequest) {
     const uploadsDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadsDir, { recursive: true });
 
-    const ext = file.name.split(".").pop() || "jpg";
-    const filename = `wallpaper-${Date.now()}.${ext}`;
+    const filename = `wallpaper-${Date.now()}.${rawExt}`;
     const filepath = path.join(uploadsDir, filename);
 
     await writeFile(filepath, buffer);
@@ -51,8 +60,10 @@ export async function POST(request: NextRequest) {
     logger.info("upload", "File uploaded", { filename, size: file.size });
     return NextResponse.json({ url: `/api/uploads/${filename}` });
   } catch (err) {
+    // Fix 6: Don't leak raw error details to client
+    logger.error("upload", "File upload failed", { error: (err as Error).message });
     return NextResponse.json(
-      { error: (err as Error).message },
+      { error: "File upload failed" },
       { status: 500 }
     );
   }

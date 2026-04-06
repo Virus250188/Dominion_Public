@@ -19,13 +19,7 @@ import { AppIcon } from "./AppIcon";
 import { GROUP_ICON_MAP, GROUP_ICON_NAMES } from "./GroupTile";
 import type { GroupTileData } from "./GroupTile";
 
-// Same preset colors as TileDialog
-const PRESET_COLORS = [
-  "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
-  "#ec4899", "#f43f5e", "#ef4444", "#f97316",
-  "#eab308", "#84cc16", "#22c55e", "#14b8a6",
-  "#06b6d4", "#0ea5e9", "#3b82f6", "#64748b",
-];
+import { PRESET_COLORS } from "@/lib/constants";
 
 interface GroupDialogProps {
   open: boolean;
@@ -157,6 +151,7 @@ export function GroupDialog({
               {PRESET_COLORS.map((c, i) => (
                 <button
                   key={`${c}-${i}`}
+                  aria-label={`Farbe ${c}`}
                   className={cn(
                     "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
                     color === c ? "border-white scale-110" : "border-transparent"

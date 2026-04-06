@@ -9,6 +9,7 @@ import { Tile } from "@/components/dashboard/Tile";
 import { EnhancedTile } from "@/components/dashboard/EnhancedTile";
 import { AddTileButton } from "@/components/dashboard/AddTileButton";
 import { useEditMode } from "@/contexts/EditModeContext";
+import { LayoutDashboard, Lock } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -158,6 +159,43 @@ export function TileGrid({
     },
     [onReorder],
   );
+
+  const { toggleEditMode } = useEditMode();
+  const isEmpty = orderedTiles.length === 0 && !extraItems;
+
+  // Empty state: Show onboarding when no tiles and no groups/subdashboards
+  if (isEmpty && !editMode) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col items-center justify-center py-24 px-4"
+      >
+        <div className="glass-card rounded-2xl p-10 max-w-md w-full text-center space-y-4">
+          <LayoutDashboard className="h-12 w-12 text-primary mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">
+            Willkommen bei Dominion
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Dein Dashboard ist noch leer. Klicke auf das{" "}
+            <Lock className="inline h-3.5 w-3.5 -mt-0.5" />{" "}
+            Schloss-Icon oben rechts, um den Bearbeitungsmodus zu aktivieren und deine erste App hinzuzufuegen.
+          </p>
+          <button
+            onClick={() => {
+              toggleEditMode();
+              // Give edit mode a moment to activate, then trigger add tile
+              setTimeout(() => onAddTile(), 100);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Erste App hinzufuegen
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <DragDropProvider onDragEnd={editMode ? handleDragEnd : undefined}>

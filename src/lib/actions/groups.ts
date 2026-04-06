@@ -1,27 +1,11 @@
 "use server";
 
 import prisma from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { requireUserId } from "@/lib/actions/requireUserId";
 import { revalidatePath } from "next/cache";
 
-/**
- * Get the authenticated userId from the session.
- * Throws if not authenticated.
- */
-async function requireUserId(): Promise<number> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized: no active session");
-  }
-  const userId = parseInt(session.user.id, 10);
-  if (isNaN(userId)) {
-    throw new Error("Unauthorized: invalid user ID in session");
-  }
-  return userId;
-}
-
 export async function createGroup(data: { title: string; icon?: string; color?: string; subDashboardId?: number | null }) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const maxOrder = await prisma.tileGroup.aggregate({ _max: { order: true } });
   const group = await prisma.tileGroup.create({
@@ -30,6 +14,7 @@ export async function createGroup(data: { title: string; icon?: string; color?: 
       icon: data.icon ?? null,
       color: data.color ?? "#6366f1",
       order: (maxOrder._max.order ?? 0) + 1,
+      userId,
       ...(data.subDashboardId != null && { subDashboardId: data.subDashboardId }),
     },
   });
@@ -38,10 +23,10 @@ export async function createGroup(data: { title: string; icon?: string; color?: 
 }
 
 export async function updateGroup(id: number, data: { title?: string; icon?: string; color?: string }) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const group = await prisma.tileGroup.update({
-    where: { id },
+    where: { id, userId },
     data: {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.icon !== undefined && { icon: data.icon }),
@@ -53,16 +38,22 @@ export async function updateGroup(id: number, data: { title?: string; icon?: str
 }
 
 export async function deleteGroup(id: number) {
-  await requireUserId();
+  const userId = await requireUserId();
 
-  // Remove all GroupTile entries for this group
-  await prisma.groupTile.deleteMany({ where: { groupId: id } });
-  // Unassign all tiles with the legacy groupId field
-  await prisma.tile.updateMany({
-    where: { groupId: id },
-    data: { groupId: null },
-  });
-  await prisma.tileGroup.delete({ where: { id } });
+  // Verify ownership before deleting
+  const group = await prisma.tileGroup.findUnique({ where: { id } });
+  if (!group || group.userId !== userId) {
+    throw new Error("Group not found or access denied");
+  }
+
+  await prisma.$transaction([
+    prisma.groupTile.deleteMany({ where: { groupId: id } }),
+    prisma.tile.updateMany({
+      where: { groupId: id },
+      data: { groupId: null },
+    }),
+    prisma.tileGroup.delete({ where: { id } }),
+  ]);
   revalidatePath("/");
 }
 
@@ -116,7 +107,13 @@ export async function removeTileFromGroup(tileId: number, groupId: number) {
 }
 
 export async function reorderGroupTiles(groupId: number, orderedTileIds: number[]) {
-  await requireUserId();
+  const userId = await requireUserId();
+
+  // Verify ownership
+  const group = await prisma.tileGroup.findUnique({ where: { id: groupId } });
+  if (!group || group.userId !== userId) {
+    throw new Error("Group not found or access denied");
+  }
 
   const updates = orderedTileIds.map((tileId, index) =>
     prisma.groupTile.updateMany({
@@ -124,15 +121,17 @@ export async function reorderGroupTiles(groupId: number, orderedTileIds: number[
       data: { order: index },
     })
   );
-  await Promise.all(updates);
+  await prisma.$transaction(updates);
   revalidatePath("/");
 }
 
 export async function toggleGroupCollapsed(groupId: number) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const group = await prisma.tileGroup.findUnique({ where: { id: groupId } });
-  if (!group) throw new Error("Group not found");
+  if (!group || group.userId !== userId) {
+    throw new Error("Group not found or access denied");
+  }
 
   await prisma.tileGroup.update({
     where: { id: groupId },

@@ -55,10 +55,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: (() => {
     const secret = process.env.AUTH_SECRET;
     if (!secret) {
-      if (process.env.NODE_ENV === "production") {
-        logger.warn("auth", "AUTH_SECRET not set in production");
-      }
+      console.warn(
+        "\n" +
+        "╔══════════════════════════════════════════════════════════════════╗\n" +
+        "║  WARNING: AUTH_SECRET is NOT set!                              ║\n" +
+        "║  Using insecure fallback secret. Anyone with source code      ║\n" +
+        "║  access can forge authentication tokens.                      ║\n" +
+        "║                                                               ║\n" +
+        "║  Generate one:  openssl rand -base64 32                       ║\n" +
+        "║  Set it in .env or docker-compose.yml as AUTH_SECRET=...      ║\n" +
+        "╚══════════════════════════════════════════════════════════════════╝\n"
+      );
       return "dominion-dev-secret-change-in-production";
+    }
+    if (secret.length < 32) {
+      console.warn("[auth] WARNING: AUTH_SECRET is shorter than 32 characters. Use a stronger secret.");
     }
     return secret;
   })(),

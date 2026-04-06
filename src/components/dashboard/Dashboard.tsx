@@ -24,6 +24,7 @@ import {
   deleteSubDashboard as deleteSubDashboardAction,
 } from "@/lib/actions/subdashboards";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 interface FoundationAppData {
   id: number;
@@ -124,44 +125,59 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const executeDeleteTile = useCallback((id: number) => {
     startTransition(async () => {
-      await deleteTile(id);
-      setTiles((prev) => prev.filter((t) => t.id !== id));
-      // Also remove from any group
-      setGroupsWithTiles((prev) =>
-        prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== id) }))
-      );
+      try {
+        await deleteTile(id);
+        setTiles((prev) => prev.filter((t) => t.id !== id));
+        // Also remove from any group
+        setGroupsWithTiles((prev) =>
+          prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== id) }))
+        );
+        toast.success("App geloescht");
+      } catch {
+        toast.error("Loeschen fehlgeschlagen");
+      }
     });
   }, []);
 
   const handleTogglePin = useCallback((id: number, pinned: boolean) => {
     startTransition(async () => {
-      await togglePinTile(id, pinned);
-      setTiles((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, pinned } : t))
-          .sort((a, b) => {
-            if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-            return a.order - b.order;
-          })
-      );
-      // Also update in group tiles
-      setGroupsWithTiles((prev) =>
-        prev.map((g) => ({
-          ...g,
-          tiles: g.tiles.map((t) => (t.id === id ? { ...t, pinned } : t)),
-        }))
-      );
+      try {
+        await togglePinTile(id, pinned);
+        setTiles((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, pinned } : t))
+            .sort((a, b) => {
+              if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+              return a.order - b.order;
+            })
+        );
+        // Also update in group tiles
+        setGroupsWithTiles((prev) =>
+          prev.map((g) => ({
+            ...g,
+            tiles: g.tiles.map((t) => (t.id === id ? { ...t, pinned } : t)),
+          }))
+        );
+      } catch {
+        toast.error("Pin-Status konnte nicht geaendert werden");
+      }
     });
   }, []);
 
   const handleReorder = useCallback((orderedIds: number[]) => {
     // Optimistic update
+    const previousTiles = tiles;
     const reordered = orderedIds
       .map((id) => tiles.find((t) => t.id === id))
       .filter(Boolean) as TileData[];
     setTiles(reordered);
 
     startTransition(async () => {
-      await reorderTiles(orderedIds);
+      try {
+        await reorderTiles(orderedIds);
+      } catch {
+        setTiles(previousTiles);
+        toast.error("Reihenfolge konnte nicht gespeichert werden");
+      }
     });
   }, [tiles]);
 
@@ -182,77 +198,83 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
       appConnectionId?: number | null;
     }) => {
       startTransition(async () => {
-        if (editingTile) {
-          await updateTile(editingTile.id, data);
-          const updatedTile = { ...editingTile, ...data, customIconSvg: data.customIconSvg ?? editingTile.customIconSvg };
-          const oldGroupId = editingTile.groupId;
-          const newGroupId = data.groupId;
-          const groupChanged = oldGroupId !== newGroupId;
+        try {
+          if (editingTile) {
+            await updateTile(editingTile.id, data);
+            const updatedTile = { ...editingTile, ...data, customIconSvg: data.customIconSvg ?? editingTile.customIconSvg };
+            const oldGroupId = editingTile.groupId;
+            const newGroupId = data.groupId;
+            const groupChanged = oldGroupId !== newGroupId;
 
-          if (groupChanged && newGroupId !== null) {
-            // Moving to a group: remove from ungrouped, add to target group
-            setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => {
-                if (g.id === newGroupId) {
-                  const alreadyIn = g.tiles.some((t) => t.id === editingTile.id);
-                  return alreadyIn
-                    ? { ...g, tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)) }
-                    : { ...g, tiles: [...g.tiles, updatedTile] };
-                }
-                // Remove from other groups
-                return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
-              })
-            );
-          } else if (groupChanged && newGroupId === null) {
-            // Moving out of group: remove from groups, add to ungrouped
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
-            );
-            setTiles((prev) => [...prev, updatedTile]);
+            if (groupChanged && newGroupId !== null) {
+              // Moving to a group: remove from ungrouped, add to target group
+              setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => {
+                  if (g.id === newGroupId) {
+                    const alreadyIn = g.tiles.some((t) => t.id === editingTile.id);
+                    return alreadyIn
+                      ? { ...g, tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)) }
+                      : { ...g, tiles: [...g.tiles, updatedTile] };
+                  }
+                  // Remove from other groups
+                  return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
+                })
+              );
+            } else if (groupChanged && newGroupId === null) {
+              // Moving out of group: remove from groups, add to ungrouped
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
+              );
+              setTiles((prev) => [...prev, updatedTile]);
+            } else {
+              // Same group — just update in place
+              setTiles((prev) =>
+                prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
+              );
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => ({
+                  ...g,
+                  tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)),
+                }))
+              );
+            }
+            toast.success("Aenderungen gespeichert");
           } else {
-            // Same group — just update in place
-            setTiles((prev) =>
-              prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
-            );
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({
-                ...g,
-                tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)),
-              }))
-            );
+            // For enhanced tiles, use the combined action that auto-creates AppConnection
+            const isEnhanced = data.type === "enhanced" && data.enhancedType;
+            const created = isEnhanced
+              ? await createEnhancedTileWithConnection({
+                  ...data,
+                  enhancedType: data.enhancedType,
+                })
+              : await createTile(data);
+            const newTile: TileData = {
+              id: created.id,
+              title: created.title,
+              url: created.url,
+              color: created.color,
+              icon: created.icon,
+              description: created.description,
+              pinned: created.pinned,
+              order: created.order,
+              columnSpan: created.columnSpan,
+              rowSpan: created.rowSpan,
+              type: created.type as "standard" | "enhanced",
+              enhancedType: created.enhancedType,
+              enhancedConfig: created.enhancedConfig,
+              customIconSvg: created.customIconSvg,
+              groupId: created.groupId,
+              appConnectionId: created.appConnectionId ?? null,
+            };
+            setTiles((prev) => [...prev, newTile]);
+            toast.success("App hinzugefuegt");
           }
-        } else {
-          // For enhanced tiles, use the combined action that auto-creates AppConnection
-          const isEnhanced = data.type === "enhanced" && data.enhancedType;
-          const created = isEnhanced
-            ? await createEnhancedTileWithConnection({
-                ...data,
-                enhancedType: data.enhancedType,
-              })
-            : await createTile(data);
-          const newTile: TileData = {
-            id: created.id,
-            title: created.title,
-            url: created.url,
-            color: created.color,
-            icon: created.icon,
-            description: created.description,
-            pinned: created.pinned,
-            order: created.order,
-            columnSpan: created.columnSpan,
-            rowSpan: created.rowSpan,
-            type: created.type as "standard" | "enhanced",
-            enhancedType: created.enhancedType,
-            enhancedConfig: created.enhancedConfig,
-            customIconSvg: created.customIconSvg,
-            groupId: created.groupId,
-            appConnectionId: created.appConnectionId ?? null,
-          };
-          setTiles((prev) => [...prev, newTile]);
+          setDialogOpen(false);
+          setEditingTile(null);
+        } catch {
+          toast.error(editingTile ? "Speichern fehlgeschlagen" : "App konnte nicht erstellt werden");
         }
-        setDialogOpen(false);
-        setEditingTile(null);
       });
     },
     [editingTile]
@@ -260,54 +282,68 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const handleMoveToGroup = useCallback((tileId: number, groupId: number | null) => {
     startTransition(async () => {
-      await assignTileToGroup(tileId, groupId);
-      // If moving to a group, remove from ungrouped tiles and add to group
-      if (groupId !== null) {
-        const tile = tiles.find((t) => t.id === tileId);
-        // Also check group tiles for cross-group moves
-        const groupTile = !tile
-          ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
-          : null;
-        const movingTile = tile || groupTile;
+      try {
+        await assignTileToGroup(tileId, groupId);
+        // If moving to a group, remove from ungrouped tiles and add to group
+        if (groupId !== null) {
+          const tile = tiles.find((t) => t.id === tileId);
+          // Also check group tiles for cross-group moves
+          const groupTile = !tile
+            ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
+            : null;
+          const movingTile = tile || groupTile;
 
-        if (movingTile) {
-          // Remove from ungrouped tiles
-          setTiles((prev) => prev.filter((t) => t.id !== tileId));
-          // Remove from any current group and add to target group
-          setGroupsWithTiles((prev) =>
-            prev.map((g) => {
-              if (g.id === groupId) {
-                // Add tile to this group (if not already there)
-                const alreadyIn = g.tiles.some((t) => t.id === tileId);
-                return alreadyIn ? g : { ...g, tiles: [...g.tiles, { ...movingTile, groupId }] };
-              }
-              // Remove from other groups
-              return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
-            })
-          );
-        }
-      } else {
-        // Moving out of group back to ungrouped
-        const groupTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId);
-        if (groupTile) {
-          setTiles((prev) => [...prev, { ...groupTile, groupId: null }]);
-          setGroupsWithTiles((prev) =>
-            prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
-          );
+          if (movingTile) {
+            // Remove from ungrouped tiles
+            setTiles((prev) => prev.filter((t) => t.id !== tileId));
+            // Remove from any current group and add to target group
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => {
+                if (g.id === groupId) {
+                  // Add tile to this group (if not already there)
+                  const alreadyIn = g.tiles.some((t) => t.id === tileId);
+                  return alreadyIn ? g : { ...g, tiles: [...g.tiles, { ...movingTile, groupId }] };
+                }
+                // Remove from other groups
+                return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
+              })
+            );
+          }
         } else {
-          setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, groupId: null } : t)));
+          // Moving out of group back to ungrouped
+          const groupTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId);
+          if (groupTile) {
+            setTiles((prev) => [...prev, { ...groupTile, groupId: null }]);
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
+            );
+          } else {
+            setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, groupId: null } : t)));
+          }
         }
+      } catch {
+        toast.error("Verschieben fehlgeschlagen");
       }
     });
   }, [tiles, groupsWithTiles]);
 
-  const handleToggleCollapsed = useCallback(async (groupId: number) => {
+  const handleToggleCollapsed = useCallback((groupId: number) => {
     // Optimistic update
     setGroupsWithTiles((prev) =>
       prev.map((g) => (g.id === groupId ? { ...g, collapsed: !g.collapsed } : g))
     );
     // Persist to server
-    await toggleGroupCollapsed(groupId);
+    startTransition(async () => {
+      try {
+        await toggleGroupCollapsed(groupId);
+      } catch {
+        // Rollback on failure
+        setGroupsWithTiles((prev) =>
+          prev.map((g) => (g.id === groupId ? { ...g, collapsed: !g.collapsed } : g))
+        );
+        toast.error("Aktion fehlgeschlagen");
+      }
+    });
   }, []);
 
   // ─── Group CRUD ────────────────────────────────────────────────
@@ -329,103 +365,114 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const executeDeleteGroup = useCallback((id: number) => {
     startTransition(async () => {
-      await deleteGroupAction(id);
-      // Move group tiles back to ungrouped
-      const deletedGroup = groupsWithTiles.find((g) => g.id === id);
-      if (deletedGroup) {
-        setTiles((prev) => [
-          ...prev,
-          ...deletedGroup.tiles.map((t) => ({ ...t, groupId: null })),
-        ]);
+      try {
+        await deleteGroupAction(id);
+        // Move group tiles back to ungrouped
+        const deletedGroup = groupsWithTiles.find((g) => g.id === id);
+        if (deletedGroup) {
+          setTiles((prev) => [
+            ...prev,
+            ...deletedGroup.tiles.map((t) => ({ ...t, groupId: null })),
+          ]);
+        }
+        setTiles((prev) => prev.map((t) => (t.groupId === id ? { ...t, groupId: null } : t)));
+        setGroups((prev) => prev.filter((g) => g.id !== id));
+        setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
+        toast.success("Gruppe geloescht");
+      } catch {
+        toast.error("Loeschen fehlgeschlagen");
       }
-      setTiles((prev) => prev.map((t) => (t.groupId === id ? { ...t, groupId: null } : t)));
-      setGroups((prev) => prev.filter((g) => g.id !== id));
-      setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
     });
   }, [groupsWithTiles]);
 
   const handleSaveGroup = useCallback(
     async (data: { title: string; icon: string; color: string; selectedTileIds: number[] }) => {
       startTransition(async () => {
-        if (editingGroup) {
-          // Update existing group
-          await updateGroup(editingGroup.id, {
-            title: data.title,
-            icon: data.icon,
-            color: data.color,
-          });
-          await assignTilesToGroup(editingGroup.id, data.selectedTileIds);
-          setGroups((prev) =>
-            prev.map((g) =>
-              g.id === editingGroup.id
-                ? { ...g, title: data.title, icon: data.icon, color: data.color, tileCount: data.selectedTileIds.length, assignedTileIds: data.selectedTileIds }
-                : g
-            )
-          );
-          // Update groupsWithTiles: update metadata and recalculate tile assignments
-          setGroupsWithTiles((prev) =>
-            prev.map((g) => {
-              if (g.id !== editingGroup.id) return g;
-              // Collect all known tiles (ungrouped + all groups)
-              const allTiles = [...tiles, ...prev.flatMap((grp) => grp.tiles)];
-              const uniqueTiles = new Map(allTiles.map((t) => [t.id, t]));
-              const newGroupTiles = data.selectedTileIds
-                .map((id) => uniqueTiles.get(id))
-                .filter(Boolean) as TileData[];
-              return {
-                ...g,
-                title: data.title,
-                icon: data.icon,
-                color: data.color,
-                tiles: newGroupTiles,
-              };
-            })
-          );
-          // Remove newly-assigned tiles from ungrouped
-          const assignedSet = new Set(data.selectedTileIds);
-          setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
-        } else {
-          // Create new group
-          const created = await createGroup({
-            title: data.title,
-            icon: data.icon,
-            color: data.color,
-          });
-          if (data.selectedTileIds.length > 0) {
-            await assignTilesToGroup(created.id, data.selectedTileIds);
+        try {
+          if (editingGroup) {
+            // Update existing group
+            await updateGroup(editingGroup.id, {
+              title: data.title,
+              icon: data.icon,
+              color: data.color,
+            });
+            await assignTilesToGroup(editingGroup.id, data.selectedTileIds);
+            setGroups((prev) =>
+              prev.map((g) =>
+                g.id === editingGroup.id
+                  ? { ...g, title: data.title, icon: data.icon, color: data.color, tileCount: data.selectedTileIds.length, assignedTileIds: data.selectedTileIds }
+                  : g
+              )
+            );
+            // Update groupsWithTiles: update metadata and recalculate tile assignments
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => {
+                if (g.id !== editingGroup.id) return g;
+                // Collect all known tiles (ungrouped + all groups)
+                const allTiles = [...tiles, ...prev.flatMap((grp) => grp.tiles)];
+                const uniqueTiles = new Map(allTiles.map((t) => [t.id, t]));
+                const newGroupTiles = data.selectedTileIds
+                  .map((id) => uniqueTiles.get(id))
+                  .filter(Boolean) as TileData[];
+                return {
+                  ...g,
+                  title: data.title,
+                  icon: data.icon,
+                  color: data.color,
+                  tiles: newGroupTiles,
+                };
+              })
+            );
+            // Remove newly-assigned tiles from ungrouped
+            const assignedSet = new Set(data.selectedTileIds);
+            setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+            toast.success("Gruppe aktualisiert");
+          } else {
+            // Create new group
+            const created = await createGroup({
+              title: data.title,
+              icon: data.icon,
+              color: data.color,
+            });
+            if (data.selectedTileIds.length > 0) {
+              await assignTilesToGroup(created.id, data.selectedTileIds);
+            }
+            setGroups((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                title: created.title,
+                icon: created.icon,
+                color: created.color,
+                order: created.order,
+                tileCount: data.selectedTileIds.length,
+                assignedTileIds: data.selectedTileIds,
+              },
+            ]);
+            // Build tiles for the new group from ungrouped tiles
+            const assignedSet = new Set(data.selectedTileIds);
+            const newGroupTiles = tiles.filter((t) => assignedSet.has(t.id));
+            setGroupsWithTiles((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                title: created.title,
+                icon: created.icon,
+                color: created.color,
+                order: created.order,
+                collapsed: false,
+                tiles: newGroupTiles.map((t) => ({ ...t, groupId: created.id })),
+              },
+            ]);
+            // Remove assigned tiles from ungrouped
+            setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+            toast.success("Gruppe erstellt");
           }
-          setGroups((prev) => [
-            ...prev,
-            {
-              id: created.id,
-              title: created.title,
-              icon: created.icon,
-              color: created.color,
-              order: created.order,
-              tileCount: data.selectedTileIds.length,
-              assignedTileIds: data.selectedTileIds,
-            },
-          ]);
-          // Build tiles for the new group from ungrouped tiles
-          const assignedSet = new Set(data.selectedTileIds);
-          const newGroupTiles = tiles.filter((t) => assignedSet.has(t.id));
-          setGroupsWithTiles((prev) => [
-            ...prev,
-            {
-              id: created.id,
-              title: created.title,
-              icon: created.icon,
-              color: created.color,
-              order: created.order,
-              collapsed: false,
-              tiles: newGroupTiles.map((t) => ({ ...t, groupId: created.id })),
-            },
-          ]);
-          // Remove assigned tiles from ungrouped
-          setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+          setGroupDialogOpen(false);
+          setEditingGroup(null);
+        } catch {
+          toast.error(editingGroup ? "Aktualisierung fehlgeschlagen" : "Gruppe konnte nicht erstellt werden");
         }
-        setGroupDialogOpen(false);
-        setEditingGroup(null);
       });
     },
     [editingGroup, tiles]
@@ -450,39 +497,50 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const executeDeleteSubDashboard = useCallback((id: number) => {
     startTransition(async () => {
-      await deleteSubDashboardAction(id);
-      setSubDashboards((prev) => prev.filter((sd) => sd.id !== id));
+      try {
+        await deleteSubDashboardAction(id);
+        setSubDashboards((prev) => prev.filter((sd) => sd.id !== id));
+        toast.success("Sub-Dashboard geloescht");
+      } catch {
+        toast.error("Loeschen fehlgeschlagen");
+      }
     });
   }, []);
 
   const handleSaveSubDashboard = useCallback(
     async (data: { title: string; icon: string; color: string; description: string }) => {
       startTransition(async () => {
-        if (editingSubDashboard) {
-          await updateSubDashboard(editingSubDashboard.id, data);
-          setSubDashboards((prev) =>
-            prev.map((sd) =>
-              sd.id === editingSubDashboard.id
-                ? { ...sd, ...data }
-                : sd
-            )
-          );
-        } else {
-          const created = await createSubDashboard(data);
-          setSubDashboards((prev) => [
-            ...prev,
-            {
-              id: created.id,
-              title: created.title,
-              icon: created.icon,
-              color: created.color,
-              description: created.description,
-              tileCount: 0,
-            },
-          ]);
+        try {
+          if (editingSubDashboard) {
+            await updateSubDashboard(editingSubDashboard.id, data);
+            setSubDashboards((prev) =>
+              prev.map((sd) =>
+                sd.id === editingSubDashboard.id
+                  ? { ...sd, ...data }
+                  : sd
+              )
+            );
+            toast.success("Sub-Dashboard aktualisiert");
+          } else {
+            const created = await createSubDashboard(data);
+            setSubDashboards((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                title: created.title,
+                icon: created.icon,
+                color: created.color,
+                description: created.description,
+                tileCount: 0,
+              },
+            ]);
+            toast.success("Sub-Dashboard erstellt");
+          }
+          setSubDashboardDialogOpen(false);
+          setEditingSubDashboard(null);
+        } catch {
+          toast.error(editingSubDashboard ? "Aktualisierung fehlgeschlagen" : "Erstellen fehlgeschlagen");
         }
-        setSubDashboardDialogOpen(false);
-        setEditingSubDashboard(null);
       });
     },
     [editingSubDashboard]

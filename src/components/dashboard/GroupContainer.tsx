@@ -4,61 +4,11 @@ import { useState } from "react";
 import type { TileData } from "@/types/tile";
 import { EnhancedTile } from "./EnhancedTile";
 import { Tile } from "./Tile";
-import { ChevronDown, ChevronRight, Pencil, GripVertical, Trash2, MoreVertical } from "lucide-react";
-import {
-  Folder,
-  FolderHeart,
-  Server,
-  Tv,
-  Shield,
-  Download,
-  Home,
-  Cloud,
-  Database,
-  Music,
-  Camera,
-  Wrench,
-  Network,
-  Monitor,
-  Globe,
-  Gamepad2,
-  Film,
-  Code,
-  Lock,
-  Zap,
-  Star,
-  LayoutGrid,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, GripVertical, Trash2, MoreVertical, Folder } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useEditMode } from "@/contexts/EditModeContext";
-
-// Icon lookup map (mirrored from GroupTile.tsx)
-const GROUP_ICON_MAP: Record<string, LucideIcon> = {
-  Folder,
-  FolderHeart,
-  Server,
-  Tv,
-  Shield,
-  Download,
-  Home,
-  Cloud,
-  Database,
-  Music,
-  Camera,
-  Wrench,
-  Network,
-  Monitor,
-  Globe,
-  Gamepad2,
-  Film,
-  Code,
-  Lock,
-  Zap,
-  Star,
-  LayoutGrid,
-};
+import { GROUP_ICON_MAP } from "./GroupTile";
 
 interface GroupContainerProps {
   group: {
