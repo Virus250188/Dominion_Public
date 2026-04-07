@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.10-alpha (2026-04-07)
+
+### Added
+- **App Catalog** — `docs/apps/` with browsable app pages on GitHub
+- **Emby App Page** — full documentation (requirements, config, stats, troubleshooting)
+- App Catalog link in README
+
+---
+
 ## v1.0.9-alpha (2026-04-07)
 
 ### Added
