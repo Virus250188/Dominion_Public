@@ -13,15 +13,17 @@ This guide covers everything you need to build, test, and publish a community pl
 3. [Plugin Structure](#3-plugin-structure)
 4. [The Plugin Interface (AppPlugin)](#4-the-plugin-interface-appplugin)
 5. [ConfigField Types](#5-configfield-types)
-6. [fetchStats -- The Heart of Your Plugin](#6-fetchstats--the-heart-of-your-plugin)
-7. [Tile Sizes and Render Hints](#7-tile-sizes-and-render-hints)
-8. [Building a Widget (Optional)](#8-building-a-widget-optional)
-9. [OAuth Plugins](#9-oauth-plugins)
-10. [Testing Your Plugin](#10-testing-your-plugin)
-11. [Available Utilities](#11-available-utilities)
-12. [Limits and Rules](#12-limits-and-rules)
-13. [Complete Example -- Minimal Plugin](#13-complete-example--minimal-plugin)
-14. [Complete Example -- Full Plugin with Widget](#14-complete-example--full-plugin-with-widget)
+6. [How the Dashboard Renders configFields](#6-how-the-dashboard-renders-configfields)
+7. [fetchStats -- The Heart of Your Plugin](#7-fetchstats--the-heart-of-your-plugin)
+8. [Tile Sizes, Render Hints & Limits](#8-tile-sizes-render-hints--limits)
+9. [crawlEntities -- Entity Discovery](#9-crawlentities--entity-discovery)
+10. [Building a Widget (Optional)](#10-building-a-widget-optional)
+11. [OAuth Plugins](#11-oauth-plugins)
+12. [Testing Your Plugin](#12-testing-your-plugin)
+13. [Available Utilities](#13-available-utilities)
+14. [Limits and Rules](#14-limits-and-rules)
+15. [Complete Example -- Minimal Plugin](#15-complete-example--minimal-plugin)
+16. [Complete Example -- Full Plugin with Widget](#16-complete-example--full-plugin-with-widget)
 
 ---
 
@@ -228,7 +230,7 @@ renderHints: {
 
 ### `fetchStats(config)` (required)
 
-The main function. Receives the merged config, returns stats. See [Section 6](#6-fetchstats--the-heart-of-your-plugin).
+The main function. Receives the merged config, returns stats. See [Section 7](#7-fetchstats--the-heart-of-your-plugin).
 
 ### `testConnection(config)` (required)
 
@@ -236,7 +238,7 @@ Validates credentials. Must return `{ ok: boolean, message: string }`.
 
 ### `exchangeToken(code, redirectUri, config)` (optional)
 
-For OAuth plugins. Exchanges an authorization code for tokens. See [Section 9](#9-oauth-plugins).
+For OAuth plugins. Exchanges an authorization code for tokens. See [Section 11](#11-oauth-plugins).
 
 ### `refreshToken(config)` (optional)
 
@@ -244,7 +246,7 @@ For OAuth plugins. Refreshes an expired access token.
 
 ### `crawlEntities(config)` (optional)
 
-For plugins that expose selectable entities (e.g. Home Assistant entities). Returns grouped entity lists.
+For plugins that expose selectable entities (e.g. Home Assistant sensors, lights, switches). Returns grouped entity lists that power the entity picker in the tile dialog. See [Section 9](#9-crawlentities--entity-discovery) for the full specification.
 
 ---
 
@@ -325,7 +327,7 @@ async fetchStats(config) {
 
 #### OAuth (for third-party services like Spotify, GitHub)
 
-For services that require browser-based authorization. This is the most complex method — only use it when the service doesn't offer API keys. See [Section 9](#9-oauth-plugins) for full details.
+For services that require browser-based authorization. This is the most complex method -- only use it when the service doesn't offer API keys. See [Section 11](#11-oauth-plugins) for full details.
 
 ### Important: `password` fields
 
@@ -351,7 +353,76 @@ When the user clicks this field, the dashboard redirects them to `authUrl`. Afte
 
 ---
 
-## 6. fetchStats -- The Heart of Your Plugin
+## 6. How the Dashboard Renders configFields
+
+When a user adds or edits a tile, the dashboard splits your `configFields` into two groups and shows them at different times. Understanding this is critical -- if you put a field in the wrong group, users will never see it (or see it too early).
+
+### Visibility Rules
+
+| Condition | When visible |
+|-----------|-------------|
+| `key` is one of `apiUrl`, `apiKey`, `accessToken`, `username`, `password` | Immediately when creating a new connection |
+| `required: true` | Immediately when creating a new connection |
+| `type: "oauth"` | Immediately when creating a new connection |
+| All other fields | Only AFTER the connection test succeeds |
+| Widget-only keys (`carouselSpeed`, `carouselItems`) | Only when the current tile size uses a `"widget"` layout |
+
+The logic in `TileDialog.tsx` is straightforward:
+
+```ts
+const CONNECTION_KEYS = new Set(["apiUrl", "apiKey", "accessToken", "username", "password"]);
+
+// Group 1: shown immediately
+const connectionFields = plugin.configFields.filter(
+  (f) => CONNECTION_KEYS.has(f.key) || f.required || f.type === "oauth"
+);
+
+// Group 2: shown after successful connection test
+const WIDGET_ONLY_KEYS = new Set(["carouselSpeed", "carouselItems"]);
+const isWidgetLayout = plugin.renderHints[currentSize]?.layout === "widget";
+
+const featureFields = plugin.configFields.filter(
+  (f) => !CONNECTION_KEYS.has(f.key) && !f.required && f.type !== "oauth"
+).filter(
+  (f) => isWidgetLayout || !WIDGET_ONLY_KEYS.has(f.key)
+);
+```
+
+### Edit Mode
+
+When a tile already has a linked AppConnection (i.e. the user is editing an existing tile), the connection fields are **not shown at all**. Instead, the dialog displays a "Connected" badge and a hint to manage the connection via **Einstellungen > Apps verwalten**. Only feature fields (group 2) appear for editing.
+
+### Practical Example
+
+A plugin for a media server that has both connection credentials and display preferences:
+
+```ts
+configFields: [
+  // Group 1 — Connection (shown immediately)
+  { key: "apiUrl",  label: "Server URL",  type: "url",      required: true },
+  { key: "apiKey",  label: "API Key",     type: "password",  required: true },
+
+  // Group 2 — Feature (shown after connection test)
+  { key: "mediaCategory", label: "Kategorie", type: "select",
+    options: [
+      { label: "Filme", value: "movies" },
+      { label: "Serien", value: "series" },
+    ],
+  },
+
+  // Group 2, widget-only — shown only when size is 2x1/2x2 with widget layout
+  { key: "carouselSpeed", label: "Karussell Geschwindigkeit (ms)", type: "number",
+    min: 3000, max: 15000, placeholder: "5000",
+  },
+]
+```
+
+> [!TIP]
+> If you want a field to appear immediately (e.g. a server port that's needed for the connection test), either set `required: true` or use one of the recognized connection keys. Otherwise it will be hidden until after the test.
+
+---
+
+## 7. fetchStats -- The Heart of Your Plugin
 
 ### What `config` contains
 
@@ -444,7 +515,7 @@ The widget component receives this via `stats.widgetData`.
 
 ---
 
-## 7. Tile Sizes and Render Hints
+## 8. Tile Sizes, Render Hints & Limits
 
 The dashboard grid uses `gridAutoRows: 140px`. Tiles snap to these sizes:
 
@@ -472,9 +543,185 @@ renderHints: {
 
 The `widgetComponent` string must match the name you export as `widgetName` in your `index.ts`.
 
+### supportedSizes and Tile Behavior
+
+The `supportedSizes` array controls what the tile dialog offers to the user:
+
+- The size dropdown **only shows sizes you declared**. If your plugin is `supportedSizes: ["1x1", "2x1"]`, the user cannot pick 2x2.
+- **Plugin switch auto-reset**: When a user changes the plugin type of an existing tile, the dashboard checks if the tile's current size is in the new plugin's `supportedSizes`. If not, it resets the tile to `1x1` automatically.
+
+### STAT_LIMITS -- The Universal Cap
+
+The dashboard enforces a hard limit on how many items a tile can display, defined per size:
+
+```ts
+const STAT_LIMITS: Record<TileSize, number> = {
+  "1x1": 3,
+  "2x1": 6,
+  "2x2": 6,
+};
+```
+
+These limits apply to **both** `statOptions` checkboxes and `selectedEntities` from the entity picker. When the user switches to a smaller tile size, any excess selections are trimmed automatically.
+
+Your `renderHints.maxStats` tells the rendering engine how many stats to display. The `STAT_LIMITS` cap is enforced by the dialog UI -- users simply cannot select more than the limit allows.
+
+> [!TIP]
+> Use the Dominion MCP Server's `preview_tile` tool to see how your plugin looks at each supported size before publishing.
+
 ---
 
-## 8. Building a Widget (Optional)
+## 9. crawlEntities -- Entity Discovery
+
+Some services expose a large number of entities that the user wants to pick from -- Home Assistant with its sensors, lights, and switches is the canonical example. Instead of asking the user to type entity IDs manually, your plugin can implement `crawlEntities` to let the dashboard discover and present entities in a structured picker.
+
+### When to use crawlEntities
+
+Use it when your service has **user-selectable items** that should appear as stats on the tile. If your plugin has a fixed set of stats (e.g. "CPU usage", "disk space"), use `statOptions` instead. If the user needs to browse and pick from dozens or hundreds of dynamic items, implement `crawlEntities`.
+
+### Interface
+
+```ts
+crawlEntities?(config: PluginConfig): Promise<{ groups: CrawlEntityGroup[] }>
+```
+
+### CrawlEntityGroup
+
+Defined in `src/plugins/types.ts`:
+
+```ts
+interface CrawlEntityGroup {
+  domain: string;    // Unique key for the group (e.g. "sensor", "light", "switch")
+  label: string;     // Display name (e.g. "SENSOREN", "LICHTER", "SCHALTER")
+  icon: string;      // Lucide icon name (e.g. "Thermometer", "Lightbulb", "ToggleLeft")
+  entities: Array<{
+    id: string;      // Unique entity ID (e.g. "sensor.wohnzimmer_temperatur")
+    name: string;    // Display name (e.g. "Wohnzimmer Temperatur")
+    state: string;   // Current value (e.g. "22.5 °C", "on", "off")
+  }>;
+}
+```
+
+### What the Entity Picker Does
+
+The dashboard's tile dialog renders the `crawlEntities` result as an interactive picker:
+
+1. **Groups as collapsible sections** -- Each `CrawlEntityGroup` becomes a collapsible section, collapsed by default.
+2. **Checkbox selection** -- The user selects entities via checkboxes. The limit depends on the tile size:
+   - `1x1`: max 3 entities
+   - `2x1`: max 6 entities
+   - `2x2`: max 6 entities
+3. **Search filter** -- A text input filters entities across all groups by name.
+4. **Custom labels** -- After selecting entities, the user can rename each one (custom alias per tile).
+5. **Stored format** -- Selected entities are saved in `config.selectedEntities` as:
+   ```ts
+   Array<{ id: string; label: string }>
+   ```
+   Where `label` is the entity's original `name` unless the user typed a custom alias.
+6. **Edit mode** -- When re-editing a tile, domains that contain previously selected entities are automatically expanded.
+7. **Size change trimming** -- If the user switches from 2x1 to 1x1, excess entities beyond the new limit are trimmed automatically.
+
+### How fetchStats Reads Selected Entities
+
+Your `fetchStats` receives `config.selectedEntities` and must fetch live data for each selected entity:
+
+```ts
+async fetchStats(config: PluginConfig): Promise<PluginStats> {
+  try {
+    const baseUrl = normalizeUrl(config.apiUrl);
+    const token = String(config.accessToken || config.apiKey || "");
+    const fetchOpts = createFetchOptions(8000, {
+      Authorization: `Bearer ${token}`,
+    });
+
+    const selectedEntities = (config.selectedEntities as Array<{ id: string; label: string }>) || [];
+    const items: StatItem[] = [];
+
+    for (const entity of selectedEntities) {
+      // entity.id   = "sensor.wohnzimmer_temperatur"
+      // entity.label = "Wohnzimmer Temp" (custom) or "Wohnzimmer Temperatur" (default)
+      const res = await fetch(`${baseUrl}/api/states/${entity.id}`, fetchOpts);
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      items.push({
+        label: entity.label,
+        value: data.state ?? "unknown",
+        unit: data.attributes?.unit_of_measurement,
+      });
+    }
+
+    return { items, status: "ok" };
+  } catch (err) {
+    return createErrorResponse(err);
+  }
+}
+```
+
+### Complete crawlEntities Example
+
+A simplified Home Assistant pattern that groups entities by domain:
+
+```ts
+async crawlEntities(config: PluginConfig): Promise<{ groups: CrawlEntityGroup[] }> {
+  const baseUrl = normalizeUrl(config.apiUrl);
+  const token = String(config.accessToken || "");
+  const fetchOpts = createFetchOptions(10000, {
+    Authorization: `Bearer ${token}`,
+  });
+
+  const res = await fetch(`${baseUrl}/api/states`, fetchOpts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const states: Array<{
+    entity_id: string;
+    state: string;
+    attributes: { friendly_name?: string; unit_of_measurement?: string };
+  }> = await res.json();
+
+  // Group entities by domain (the part before the dot)
+  const domainMap = new Map<string, Array<{ id: string; name: string; state: string }>>();
+  for (const s of states) {
+    const [domain] = s.entity_id.split(".");
+    if (!domainMap.has(domain)) domainMap.set(domain, []);
+    const unit = s.attributes.unit_of_measurement;
+    domainMap.get(domain)!.push({
+      id: s.entity_id,
+      name: s.attributes.friendly_name || s.entity_id,
+      state: unit ? `${s.state} ${unit}` : s.state,
+    });
+  }
+
+  // Map domains to display labels and icons
+  const DOMAIN_META: Record<string, { label: string; icon: string }> = {
+    sensor:       { label: "SENSOREN",   icon: "Thermometer" },
+    binary_sensor:{ label: "BINAER",     icon: "ToggleLeft" },
+    light:        { label: "LICHTER",    icon: "Lightbulb" },
+    switch:       { label: "SCHALTER",   icon: "Power" },
+    climate:      { label: "KLIMA",      icon: "Snowflake" },
+    cover:        { label: "ABDECKUNGEN",icon: "ArrowUpDown" },
+  };
+
+  const groups: CrawlEntityGroup[] = [];
+  for (const [domain, entities] of domainMap) {
+    const meta = DOMAIN_META[domain] || { label: domain.toUpperCase(), icon: "Box" };
+    groups.push({
+      domain,
+      label: meta.label,
+      icon: meta.icon,
+      entities: entities.sort((a, b) => a.name.localeCompare(b.name)),
+    });
+  }
+
+  return { groups: groups.sort((a, b) => a.label.localeCompare(b.label)) };
+}
+```
+
+> [!NOTE]
+> `crawlEntities` is called automatically after a successful connection test. If your service has many entities (Home Assistant can have 500+), keep the response fast -- the dashboard shows a loading spinner while crawling.
+
+---
+
+## 10. Building a Widget (Optional)
 
 Widgets are React components that render inside 2x1 or 2x2 tiles. They receive full control over the tile's content area.
 
@@ -586,7 +833,7 @@ The shared `WidgetHeader` component provides a consistent header bar:
 
 ---
 
-## 9. OAuth Plugins
+## 11. OAuth Plugins
 
 Some services (Spotify, Google, etc.) require OAuth instead of a simple API key.
 
@@ -698,7 +945,7 @@ async refreshToken(config: PluginConfig) {
 
 ---
 
-## 10. Testing Your Plugin
+## 12. Testing Your Plugin
 
 ### Option A: Manual placement (development)
 
@@ -737,7 +984,7 @@ async refreshToken(config: PluginConfig) {
 
 ---
 
-## 11. Available Utilities
+## 13. Available Utilities
 
 Import from `../../utils` (or `@/plugins/utils` from builtin plugins):
 
@@ -799,7 +1046,7 @@ formatUptime(270000) // -> "3d 3h"
 
 ---
 
-## 12. Limits and Rules
+## 14. Limits and Rules
 
 ### Runtime environment
 
@@ -841,7 +1088,7 @@ The `validateStats` function sanitizes your `fetchStats` output:
 
 ---
 
-## 13. Complete Example -- Minimal Plugin
+## 15. Complete Example -- Minimal Plugin
 
 A simple plugin for a fictional "StatusPage" service that shows uptime and response time. No widget, 1x1 only.
 
@@ -1001,7 +1248,7 @@ export const plugin: AppPlugin = {
 
 ---
 
-## 14. Complete Example -- Full Plugin with Widget
+## 16. Complete Example -- Full Plugin with Widget
 
 A more complex plugin with OAuth, multiple sizes, and a custom widget. This example shows the structure for a music streaming service.
 
