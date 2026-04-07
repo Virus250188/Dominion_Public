@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.9-alpha (2026-04-07)
+
+### Added
+- **Plugin Guide: configField visibility rules** — documents when fields appear in the dialog (connection vs feature split)
+- **Plugin Guide: crawlEntities specification** — full spec with interfaces, entity picker behavior, selectedEntities format
+- **Plugin Guide: supportedSizes & STAT_LIMITS** — documents auto-reset, limits per size, preview_tile tip
+
+---
+
 ## v1.0.8-alpha (2026-04-07)
 
 ### Added
