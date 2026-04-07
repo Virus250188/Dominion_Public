@@ -1594,6 +1594,24 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                               );
                             })}
                         </ScrollArea>
+                        {selectedEntities.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <span className="text-xs text-muted-foreground">Anzeigenamen anpassen</span>
+                            {selectedEntities.map(se => (
+                              <div key={se.id} className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground truncate min-w-0 w-[40%]" title={se.id}>{se.id}</span>
+                                <input
+                                  type="text"
+                                  value={se.label}
+                                  onChange={(e) => setSelectedEntities(prev =>
+                                    prev.map(item => item.id === se.id ? { ...item, label: e.target.value } : item)
+                                  )}
+                                  className="flex-1 h-7 text-sm rounded-md border border-white/10 bg-white/5 px-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {selectedEntities.length >= (STAT_LIMITS[currentSize] ?? 3) && (
                           <p className="text-xs text-muted-foreground">Maximum ({STAT_LIMITS[currentSize]}) erreicht.</p>
                         )}
