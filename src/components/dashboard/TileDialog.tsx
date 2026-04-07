@@ -244,6 +244,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
       setCustomIconSvg(null);
       setLinkedConnectionId(null);
       setConnectionMode("select");
+      setExpandedDomains(new Set());
     }
     setIconUploadError(null);
     setShowFoundation(false);
@@ -259,7 +260,6 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     setCrawledGroups([]);
     setIsCrawling(false);
     setEntitySearch("");
-    setExpandedDomains(new Set());
     // Restore selectedEntities from saved config when editing
     if (tile && tile.enhancedConfig) {
       try {
@@ -283,6 +283,49 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
       // If editing an existing enhanced tile, consider it already tested
       if (tile.type === "enhanced" && tile.enhancedType) {
         setConnectionTested(true);
+
+        // Auto-crawl entities if tile has a linked connection
+        if (tile.appConnectionId) {
+          const autoCrawl = async () => {
+            try {
+              setIsCrawling(true);
+              const crawlRes = await fetch("/api/enhanced/crawl", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  enhancedType: tile.enhancedType,
+                  config: tile.enhancedConfig ? JSON.parse(tile.enhancedConfig) : {},
+                  connectionId: tile.appConnectionId,
+                }),
+              });
+              const crawlData = await crawlRes.json();
+              if (crawlData.success && crawlData.groups) {
+                setCrawledGroups(crawlData.groups);
+                // Auto-expand domains that contain selected entities
+                const cfg = tile.enhancedConfig ? JSON.parse(tile.enhancedConfig) : {};
+                const ents = cfg.selectedEntities;
+                const savedEntities = Array.isArray(ents) ? ents : (typeof ents === "string" ? JSON.parse(ents) : []);
+                if (savedEntities.length > 0) {
+                  const savedIds = new Set(savedEntities.map((e: SelectedEntity) => e.id));
+                  const domainsToExpand = new Set<string>();
+                  for (const group of crawlData.groups) {
+                    if (group.entities.some((e: { id: string }) => savedIds.has(e.id))) {
+                      domainsToExpand.add(group.domain);
+                    }
+                  }
+                  if (domainsToExpand.size > 0) {
+                    setExpandedDomains(domainsToExpand);
+                  }
+                }
+              }
+            } catch {
+              /* crawl not supported */
+            } finally {
+              setIsCrawling(false);
+            }
+          };
+          autoCrawl();
+        }
       }
     } else {
       setSelectedEntities([]);
@@ -361,39 +404,8 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     }
   }, [currentSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-crawl entities when editing a tile with existing connection
-  useEffect(() => {
-    if (
-      !(connectionTested || !!linkedConnectionId) ||
-      crawledGroups.length > 0 ||
-      !enhancedType ||
-      isCrawling
-    ) return;
-
-    const doCrawl = async () => {
-      try {
-        setIsCrawling(true);
-        const crawlRes = await fetch("/api/enhanced/crawl", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            enhancedType,
-            config: enhancedConfig,
-            connectionId: linkedConnectionId || undefined,
-          }),
-        });
-        const crawlData = await crawlRes.json();
-        if (crawlData.success && crawlData.groups) {
-          setCrawledGroups(crawlData.groups);
-        }
-      } catch {
-        /* crawl not supported or failed */
-      } finally {
-        setIsCrawling(false);
-      }
-    };
-    doCrawl();
-  }, [connectionTested, linkedConnectionId, enhancedType]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-crawl is triggered inside the main useEffect above via autoCrawlRef
+  // No separate useEffect needed — avoids React dependency array size mismatch
 
   // Whether a plugin match exists (only then show Enhanced toggle)
   const [hasPluginMatch, setHasPluginMatch] = useState(false);
@@ -1516,7 +1528,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                     )}
 
                     {crawledGroups.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full overflow-hidden">
                         <Label className="text-sm">Entities auswaehlen</Label>
                         <p className="text-xs text-muted-foreground">
                           {SIZE_DESCRIPTIONS[currentSize]} -- {selectedEntities.length} von {STAT_LIMITS[currentSize]} ausgewaehlt
@@ -1527,7 +1539,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                           onChange={(e) => setEntitySearch(e.target.value)}
                           className="mb-2"
                         />
-                        <ScrollArea className="max-h-[250px]">
+                        <ScrollArea className="max-h-[250px] overflow-x-hidden">
                           {crawledGroups
                             .filter(group =>
                               !entitySearch ||
@@ -1559,7 +1571,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                                     const isSelected = selectedEntities.some(se => se.id === entity.id);
                                     const limit = STAT_LIMITS[currentSize] ?? 3;
                                     return (
-                                      <label key={entity.id} className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-accent/30 rounded px-1 ml-4">
+                                      <label key={entity.id} className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-accent/30 rounded px-1 ml-4 w-[calc(100%-1rem)] overflow-hidden" title={`${entity.name} — ${entity.state || ""}`}>
                                         <input
                                           type="checkbox"
                                           checked={isSelected}
@@ -1571,10 +1583,10 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                                                 : prev.filter(se => se.id !== entity.id)
                                             );
                                           }}
-                                          className="rounded"
+                                          className="rounded shrink-0"
                                         />
-                                        <span className="text-foreground truncate">{entity.name}</span>
-                                        <span className="text-xs text-muted-foreground ml-auto shrink-0">{entity.state}</span>
+                                        <span className="text-foreground truncate flex-1 min-w-0">{entity.name}</span>
+                                        {entity.state && <span className="text-xs text-muted-foreground truncate max-w-[35%] text-right">{entity.state}</span>}
                                       </label>
                                     );
                                   })}
