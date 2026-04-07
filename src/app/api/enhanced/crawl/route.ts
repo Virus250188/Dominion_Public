@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getPlugin } from "@/plugins/registry";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { getAppConnection } from "@/lib/queries/appConnections";
+import { decrypt } from "@/lib/crypto";
 import type { PluginConfig } from "@/plugins/types";
 
 // Rate limit: 5 requests per minute per user
@@ -31,10 +33,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { enhancedType, config } = body as {
+    const { enhancedType, config: clientConfig, connectionId } = body as {
       enhancedType: string;
       config: PluginConfig;
+      connectionId?: number;
     };
+
+    // If connectionId provided, merge connection credentials into config
+    let config = { ...clientConfig };
+    if (connectionId) {
+      const conn = await getAppConnection(connectionId, parseInt(session.user.id));
+      if (conn) {
+        if (conn.url) config.apiUrl = conn.url;
+        if (conn.config) {
+          try {
+            const connConfig = JSON.parse(conn.config);
+            config = { ...config, ...connConfig };
+          } catch { /* ignore */ }
+        }
+      }
+    }
 
     if (!enhancedType || typeof enhancedType !== "string") {
       return NextResponse.json(

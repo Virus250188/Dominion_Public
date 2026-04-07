@@ -361,6 +361,40 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     }
   }, [currentSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-crawl entities when editing a tile with existing connection
+  useEffect(() => {
+    if (
+      !(connectionTested || !!linkedConnectionId) ||
+      crawledGroups.length > 0 ||
+      !enhancedType ||
+      isCrawling
+    ) return;
+
+    const doCrawl = async () => {
+      try {
+        setIsCrawling(true);
+        const crawlRes = await fetch("/api/enhanced/crawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            enhancedType,
+            config: enhancedConfig,
+            connectionId: linkedConnectionId || undefined,
+          }),
+        });
+        const crawlData = await crawlRes.json();
+        if (crawlData.success && crawlData.groups) {
+          setCrawledGroups(crawlData.groups);
+        }
+      } catch {
+        /* crawl not supported or failed */
+      } finally {
+        setIsCrawling(false);
+      }
+    };
+    doCrawl();
+  }, [connectionTested, linkedConnectionId, enhancedType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Whether a plugin match exists (only then show Enhanced toggle)
   const [hasPluginMatch, setHasPluginMatch] = useState(false);
 
