@@ -204,10 +204,36 @@ export function validatePluginZip(buffer: Buffer): PluginValidationResult {
     }
   }
 
-  // ── 7. Conflict check (skipped — updates are now allowed) ──────────────────
+  // ── 7. Import validation — block relative imports escaping plugin folder ────
 
-  // Previously this blocked re-upload. Now the upload route handles
-  // overwrite logic itself, so we only validate the ZIP structure here.
+  const RELATIVE_ESCAPE_RE = /from\s+["']\.\.\/(?!.*\.\/types)/g;
+  const ALLOWED_IMPORT_HINT = 'Nutze "@/" Pfade fuer Dashboard-Imports, z.B. import { X } from "@/components/widgets/shared/X"';
+
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+    let relativePath = entry.entryName;
+    if (prefix && relativePath.startsWith(prefix)) {
+      relativePath = relativePath.slice(prefix.length);
+    }
+    if (!relativePath.endsWith(".ts") && !relativePath.endsWith(".tsx")) continue;
+
+    const content = entry.getData().toString("utf-8");
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Check for relative imports that escape the plugin folder (../)
+      const importMatch = line.match(/from\s+["'](\.\.\/[^"']+)["']/);
+      if (importMatch) {
+        errors.push(
+          `${relativePath}:${i + 1}: Relativer Import "${importMatch[1]}" ist nicht erlaubt. ${ALLOWED_IMPORT_HINT}`
+        );
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors, warnings, manifest };
+  }
 
   // ── 8. Path traversal already checked above ────────────────────────────────
 

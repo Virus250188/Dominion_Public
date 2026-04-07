@@ -79,6 +79,10 @@ Ideen.txt
 PLAN-*.md
 AGENTS.md
 
+# Community plugins (installed locally, not in repo or Docker)
+src/plugins/community/*/
+!src/plugins/community/index.ts
+
 # Internal docs (keep locally, not on public GitHub)
 docs/CLAUDE.md
 docs/ENHANCED_FRAMEWORK.md
