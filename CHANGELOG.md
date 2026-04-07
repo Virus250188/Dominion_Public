@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.8-alpha (2026-04-07)
+
+### Added
+- **Community Apps** — renamed from "Plugin Upload", full lifecycle: install, update, delete
+- **Entity-Picker auto-crawl** — entities load automatically when editing tiles with linked connections
+- **Entity-Picker auto-expand** — domains with selected entities open automatically
+- **Editable entity labels** — custom display names per entity, per tile
+- **Community files** — CONTRIBUTING.md, SECURITY.md, issue/PR templates for GitHub
+
+### Fixed
+- Entity-Picker overflow — long entity names and state values stay within dialog bounds
+- Missing ownership checks on `removeTileFromGroup` and `assignTilesToGroup`
+- Unused import in crawl route
+- Double JSON.parse in auto-crawl effect
+- Hardcoded "Spotify" fallback replaced with dynamic plugin name
+- Broken links in README and plugin development guide
+
+---
+
 ## v1.0.7-alpha (2026-04-06)
 
 ### Security

@@ -98,7 +98,12 @@ export async function cloneTileToGroup(tileId: number, groupId: number) {
 }
 
 export async function removeTileFromGroup(tileId: number, groupId: number) {
-  await requireUserId();
+  const userId = await requireUserId();
+
+  const group = await prisma.tileGroup.findUnique({ where: { id: groupId } });
+  if (!group || group.userId !== userId) {
+    throw new Error("Group not found or access denied");
+  }
 
   await prisma.groupTile.deleteMany({
     where: { tileId, groupId },
@@ -141,7 +146,12 @@ export async function toggleGroupCollapsed(groupId: number) {
 }
 
 export async function assignTilesToGroup(groupId: number, tileIds: number[]) {
-  await requireUserId();
+  const userId = await requireUserId();
+
+  const group = await prisma.tileGroup.findUnique({ where: { id: groupId } });
+  if (!group || group.userId !== userId) {
+    throw new Error("Group not found or access denied");
+  }
 
   // Get existing assignments
   const existing = await prisma.groupTile.findMany({

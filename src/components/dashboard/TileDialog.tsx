@@ -286,6 +286,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
 
         // Auto-crawl entities if tile has a linked connection
         if (tile.appConnectionId) {
+          const parsedConfig = tile.enhancedConfig ? JSON.parse(tile.enhancedConfig) : {};
           const autoCrawl = async () => {
             try {
               setIsCrawling(true);
@@ -294,7 +295,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   enhancedType: tile.enhancedType,
-                  config: tile.enhancedConfig ? JSON.parse(tile.enhancedConfig) : {},
+                  config: parsedConfig,
                   connectionId: tile.appConnectionId,
                 }),
               });
@@ -302,8 +303,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
               if (crawlData.success && crawlData.groups) {
                 setCrawledGroups(crawlData.groups);
                 // Auto-expand domains that contain selected entities
-                const cfg = tile.enhancedConfig ? JSON.parse(tile.enhancedConfig) : {};
-                const ents = cfg.selectedEntities;
+                const ents = parsedConfig.selectedEntities;
                 const savedEntities = Array.isArray(ents) ? ents : (typeof ents === "string" ? JSON.parse(ents) : []);
                 if (savedEntities.length > 0) {
                   const savedIds = new Set(savedEntities.map((e: SelectedEntity) => e.id));
@@ -830,7 +830,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
 
               const newConn = await createAppConnection({
                 pluginType: enhancedType,
-                name: title || "Spotify",
+                name: title || enhancedType || "Neue Verbindung",
                 icon: icon || null,
                 customIconSvg: customIconSvg || null,
                 color,

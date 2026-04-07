@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { getPlugin } from "@/plugins/registry";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { getAppConnection } from "@/lib/queries/appConnections";
-import { decrypt } from "@/lib/crypto";
 import type { PluginConfig } from "@/plugins/types";
 
 // Rate limit: 5 requests per minute per user
