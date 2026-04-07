@@ -109,6 +109,8 @@ Each Enhanced App supports up to three tile sizes:
 
 **Currently shipped:** Emby — [more plugins are being added →](docs/plugin-development.md)
 
+📦 **[App Catalog](docs/apps/)** — Ready-to-use Enhanced Apps
+
 > **Want to build a plugin?** An Enhanced App is a single TypeScript file. Define your stats, config fields, and optional widget — Dominion handles the rest.
 > See the [Plugin Development Guide](docs/plugin-development.md) to get started.
 
