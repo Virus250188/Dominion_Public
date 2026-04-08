@@ -117,6 +117,9 @@ model UserSettings {
   aiEndpoint            String?
   dashboardWidthPercent Int     @default(70)
   groupsWidthPercent    Int     @default(70)
+  textPrimary    String?
+  textSecondary  String?
+  glassAccent    String?
 }
 
 model FoundationApp {
