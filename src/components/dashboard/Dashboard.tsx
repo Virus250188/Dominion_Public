@@ -289,44 +289,49 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
   );
 
   const handleMoveToGroup = useCallback((tileId: number, groupId: number | null) => {
+    if (groupId !== null) {
+      // Moving to a group: find the tile from ungrouped or another group
+      const ungroupedTile = tiles.find((t) => t.id === tileId);
+      const otherGroupTile = !ungroupedTile
+        ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
+        : null;
+      const movingTile = ungroupedTile || otherGroupTile;
+
+      if (movingTile) {
+        // Optimistic: remove from ungrouped, move between groups
+        setTiles((prev) => prev.filter((t) => t.id !== tileId));
+        setGroupsWithTiles((prev) =>
+          prev.map((g) => {
+            if (g.id === groupId) {
+              const alreadyIn = g.tiles.some((t) => t.id === tileId);
+              return alreadyIn ? g : { ...g, tiles: [...g.tiles, movingTile] };
+            }
+            return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
+          })
+        );
+      }
+    } else {
+      // Moving out of group back to ungrouped — use functional updater
+      // to read current groupsWithTiles state and extract the tile
+      let removedTile: TileData | null = null;
+      setGroupsWithTiles((prev) => {
+        for (const g of prev) {
+          const found = g.tiles.find((t) => t.id === tileId);
+          if (found) { removedTile = found; break; }
+        }
+        return prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }));
+      });
+      // React batches state updates in the same synchronous block,
+      // so removedTile is populated before setTiles runs its updater
+      if (removedTile) {
+        setTiles((prev) => [...prev, removedTile!]);
+      }
+    }
+
+    // Persist to server (non-blocking)
     startTransition(async () => {
       try {
         await assignTileToGroup(tileId, groupId);
-        // If moving to a group, remove from ungrouped tiles and add to group
-        if (groupId !== null) {
-          const tile = tiles.find((t) => t.id === tileId);
-          // Also check group tiles for cross-group moves
-          const groupTile = !tile
-            ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
-            : null;
-          const movingTile = tile || groupTile;
-
-          if (movingTile) {
-            // Remove from ungrouped tiles
-            setTiles((prev) => prev.filter((t) => t.id !== tileId));
-            // Remove from any current group and add to target group
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => {
-                if (g.id === groupId) {
-                  // Add tile to this group (if not already there)
-                  const alreadyIn = g.tiles.some((t) => t.id === tileId);
-                  return alreadyIn ? g : { ...g, tiles: [...g.tiles, movingTile] };
-                }
-                // Remove from other groups
-                return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
-              })
-            );
-          }
-        } else {
-          // Moving out of group back to ungrouped
-          const groupTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId);
-          if (groupTile) {
-            setTiles((prev) => [...prev, groupTile]);
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
-            );
-          }
-        }
       } catch {
         toast.error("Verschieben fehlgeschlagen");
       }
