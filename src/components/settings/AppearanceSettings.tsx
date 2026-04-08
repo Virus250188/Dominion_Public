@@ -229,29 +229,12 @@ export function AppearanceSettings({
       <section>
         <Label className="text-base font-semibold mb-4 block">Layout</Label>
         <div className="glass-card p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">Grid Spalten (Desktop)</span>
-            <div className="flex items-center gap-2">
-              {[4, 5, 6].map((cols) => (
-                <button
-                  key={cols}
-                  onClick={() => {
-                    setGridColumns(cols);
-                    startTransition(async () => {
-                      await updateUserSettings(1, { gridColumns: cols });
-                    });
-                  }}
-                  className={cn(
-                    "h-8 w-8 rounded-lg text-sm font-medium transition-colors",
-                    gridColumns === cols
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-accent text-accent-foreground hover:bg-accent/80"
-                  )}
-                >
-                  {cols}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-2">
+            <Label>Dashboard-Layout</Label>
+            <p className="text-sm text-muted-foreground">
+              Das Grid passt sich automatisch an die verfuegbare Breite an.
+              Im Bearbeitungsmodus kannst du die Dashboard-Breite per Drag anpassen.
+            </p>
           </div>
         </div>
       </section>
