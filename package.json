@@ -1,6 +1,6 @@
 {
   "name": "dominion",
-  "version": "1.2.0",
+  "version": "1.2.0-beta",
   "private": true,
   "scripts": {
     "generate:plugins": "npx tsx scripts/generate-community-plugins.ts",

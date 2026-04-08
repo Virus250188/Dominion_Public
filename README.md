@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://hub.docker.com/r/miguel1988/dominion"><img src="https://img.shields.io/badge/Docker_Hub-miguel1988%2Fdominion-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Hub" /></a>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Release-v1.1.0--alpha-orange?style=flat-square" alt="Alpha Release" />
+  <img src="https://img.shields.io/badge/Release-v1.2.0--beta-blue?style=flat-square" alt="Release v1.2.0-beta" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
@@ -18,7 +18,7 @@
   <img src="docs/screenshots/dashboard.png" alt="Dominion Dashboard with app tiles and animated Prism background" width="750" />
 </p>
 
-> **Alpha — Functional, self-hostable, evolving fast.** Dominion is a real application with auth, encrypted storage, and a plugin system — not a mockup. We ship quickly and break things along the way. Looking for **testers** to try it and **developers** to build Enhanced App plugins. [Open an issue](https://github.com/Virus250188/Dominion_Public/issues) or check the [Plugin Development Guide](docs/plugin-development.md) to get involved.
+> **Beta — Stable, self-hostable, actively developed.** Dominion is a real application with auth, encrypted storage, security hardening, and a plugin system. We're looking for **testers** to try it and **developers** to build Enhanced App plugins. [Open an issue](https://github.com/Virus250188/Dominion_Public/issues) or check the [Plugin Development Guide](docs/plugin-development.md) to get involved.
 
 ---
 
