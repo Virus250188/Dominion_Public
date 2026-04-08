@@ -89,3 +89,6 @@ docs/ENHANCED_FRAMEWORK.md
 docs/PLUGINS.md
 docs/enhanced-apps/
 docs/superpowers/
+
+# Superpowers development sessions (root-level)
+/.superpowers/
