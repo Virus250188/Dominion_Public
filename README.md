@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://hub.docker.com/r/miguel1988/dominion"><img src="https://img.shields.io/badge/Docker_Hub-miguel1988%2Fdominion-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Hub" /></a>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Release-v1.0.10--alpha-orange?style=flat-square" alt="Alpha Release" />
+  <img src="https://img.shields.io/badge/Release-v1.1.0--alpha-orange?style=flat-square" alt="Alpha Release" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
@@ -72,13 +72,23 @@ Open **http://localhost:3000** — the setup wizard will guide you through creat
 
 <img src="docs/screenshots/app-dialog.png" alt="App dialog with auto-detected icons and enhanced plugin detection" width="320" align="right" />
 
-- **60+ foundation apps** with auto-detected icons from [simple-icons](https://simpleicons.org)
+- **70+ foundation apps** with auto-detected icons from [simple-icons](https://simpleicons.org)
 - Drag-and-drop tile arrangement
 - Groups and sub-dashboards for organizing by category
 - Command palette search with `Ctrl+K`
-- Configurable grid layout (4, 5, or 6 columns)
+- Auto-fill bento grid that adapts to any screen width
+- Resizable dashboard width with drag handles (edit mode)
+- Group drag-and-drop reordering
+- Icon Picker with 3,000+ searchable icons from [simple-icons](https://simpleicons.org)
 
 <br clear="right" />
+
+### Notification Panel & Layout
+
+- Collapsible notification sidebar (placeholder for upcoming notification system)
+- Responsive layout — panel collapses to header bell icon on smaller screens
+- Bidirectional resize handles for precise dashboard width control
+- Dashboard automatically uses full width when notification panel is collapsed
 
 ### Themes & Animated Backgrounds
 
@@ -120,6 +130,7 @@ Each Enhanced App supports up to three tile sizes:
 - **AES-256-GCM encryption** for all stored API keys and credentials
 - Server-side API proxy — secrets never reach the browser
 - Edge-compatible middleware route protection
+- User-scoped queries — all data access filtered by authenticated user
 
 ### Docker-Native
 
@@ -220,7 +231,7 @@ Open **http://localhost:3000** — default login: `admin` / `admin123`
 
 - [ ] More Enhanced App plugins (Proxmox, Plex, Jellyfin, Pi-hole, ...)
 - [ ] Multi-user support with role-based access
-- [ ] Notification system (webhooks, push)
+- [ ] Notification system — panel ready, webhooks & push coming
 - [ ] Public sharing / TV display mode
 
 ---
