@@ -22,6 +22,8 @@ export async function updateUserSettings(
     aiApiKey?: string | null;
     aiModel?: string | null;
     aiEndpoint?: string | null;
+    dashboardWidthPercent?: number;
+    groupsWidthPercent?: number;
   }
 ) {
   const authenticatedUserId = await requireUserId();

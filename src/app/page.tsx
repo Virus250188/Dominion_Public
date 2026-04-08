@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/Header";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SearchBar } from "@/components/dashboard/SearchBar";
 import { getTiles, getFoundationApps } from "@/lib/queries/tiles";
 import { getSearchProviders } from "@/lib/queries/search";
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
       <div className="md:hidden px-6 pt-4">
         <SearchBar providers={searchProviders} tiles={searchTiles} />
       </div>
-      <main className="flex w-full flex-1 flex-col gap-6 px-6 py-8">
+      <DashboardLayout initialWidthPercent={settings?.dashboardWidthPercent ?? 70}>
         <Dashboard
           initialTiles={ungroupedTiles.map((t) => ({
             id: t.id,
@@ -140,7 +141,7 @@ export default async function DashboardPage() {
           initialSubDashboards={subDashboards}
           gridColumns={settings?.gridColumns ?? 6}
         />
-      </main>
+      </DashboardLayout>
     </div>
   );
 }
