@@ -103,7 +103,7 @@ model UserSettings {
   user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   theme          String  @default("glass-dark")
   background     String?
-  backgroundType String  @default("gradient")
+  backgroundType String  @default("plasma")
   searchProvider String  @default("google")
   language       String  @default("de")
   gridColumns    Int     @default(6)

@@ -457,6 +457,22 @@
     100% { transform: rotate(-10deg) translateX(4%); opacity: 1; }
   }
 
+  /* Hide glass decorative layers on non-glass (solid) themes */
+  :root[data-theme="dark"] .glass-chromatic,
+  :root[data-theme="dark"] .glass-shine,
+  :root[data-theme="dark"] .glass-edge-glow,
+  :root[data-theme="light"] .glass-chromatic,
+  :root[data-theme="light"] .glass-shine,
+  :root[data-theme="light"] .glass-edge-glow,
+  :root[data-theme="nord"] .glass-chromatic,
+  :root[data-theme="nord"] .glass-shine,
+  :root[data-theme="nord"] .glass-edge-glow,
+  :root[data-theme="catppuccin"] .glass-chromatic,
+  :root[data-theme="catppuccin"] .glass-shine,
+  :root[data-theme="catppuccin"] .glass-edge-glow {
+    display: none;
+  }
+
   .text-tile-title {
     color: var(--text-primary-custom, var(--foreground));
   }

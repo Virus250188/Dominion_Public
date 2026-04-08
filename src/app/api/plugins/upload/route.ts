@@ -74,6 +74,17 @@ export async function POST(request: NextRequest) {
       manifest.id,
     );
 
+    // Security: verify targetDir is within the expected base directory (defense in depth)
+    const communityBase = path.resolve(process.cwd(), "src", "plugins", "community");
+    const resolvedTarget = path.resolve(targetDir);
+    if (!resolvedTarget.startsWith(communityBase + path.sep) && resolvedTarget !== communityBase) {
+      logger.warn("plugin-upload", `Path injection attempt: ${manifest.id} resolved to ${resolvedTarget}`);
+      return NextResponse.json(
+        { error: "Ungueltiger Plugin-Pfad." },
+        { status: 400 },
+      );
+    }
+
     // Check if this is an update (plugin already exists)
     const isUpdate = fs.existsSync(targetDir);
     let previousVersion: string | undefined;
