@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { BackgroundLayer } from "@/components/backgrounds/BackgroundLayer";
 import { EditModeProvider } from "@/contexts/EditModeContext";
+import { NotificationPanelProvider } from "@/contexts/NotificationPanelContext";
 import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/queries/settings";
 import type { Theme } from "@/types/theme";
@@ -81,6 +82,7 @@ export default async function RootLayout({
           dbSettingsLoaded={dbSettingsLoaded}
         >
           <EditModeProvider>
+            <NotificationPanelProvider>
             <BackgroundLayer />
             {children}
             <Toaster
@@ -97,6 +99,7 @@ export default async function RootLayout({
                 },
               }}
             />
+            </NotificationPanelProvider>
           </EditModeProvider>
         </ThemeProvider>
       </body>

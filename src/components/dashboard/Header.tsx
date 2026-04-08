@@ -7,6 +7,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useEditMode } from "@/contexts/EditModeContext";
+import { useNotificationPanel } from "@/contexts/NotificationPanelContext";
 
 function EditModeToggle() {
   const { editMode, toggleEditMode } = useEditMode();
@@ -62,6 +63,7 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
   const [greeting, setGreeting] = useState(() => getGreeting());
   const [mounted, setMounted] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const { collapsed: panelCollapsed, toggle: togglePanel, notificationCount } = useNotificationPanel();
 
   useEffect(() => {
     setMounted(true);
@@ -118,12 +120,18 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
             <span className="text-sm font-medium tabular-nums text-foreground">{time}</span>
             <span className="text-xs text-muted-foreground">{date}</span>
           </div>
-          {/* Notification bell — visible below xl where the panel is hidden */}
+          {/* Notification bell — always visible below xl, or on xl+ when panel is collapsed */}
           <button
-            className="flex xl:hidden h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-accent relative"
-            title="Benachrichtigungen"
+            onClick={togglePanel}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-accent relative ${panelCollapsed ? "flex" : "xl:hidden"}`}
+            title={panelCollapsed ? "Benachrichtigungen anzeigen" : "Benachrichtigungen"}
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
+                {notificationCount}
+              </span>
+            )}
           </button>
           <button
             onClick={aiConfigured ? () => setChatOpen((v) => !v) : undefined}
