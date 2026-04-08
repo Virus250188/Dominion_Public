@@ -115,6 +115,7 @@ interface TileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tile: TileData | null;
+  initialGroupId?: number | null;
   foundationApps: FoundationAppData[];
   appConnections?: AppConnectionSummary[];
   groups: GroupData[];
@@ -137,7 +138,7 @@ interface TileDialogProps {
   onOpenGroupDialog?: () => void;
 }
 
-export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnections = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
+export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundationApps, appConnections = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
   // Dialog mode: "select" for new tile mode chooser, "app" for app form, "group" for group placeholder
   const [dialogMode, setDialogMode] = useState<"select" | "app" | "group">("select");
 
@@ -220,7 +221,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
       setHasPluginMatch(tile.type === "enhanced" && !!tile.enhancedType);
       setColumnSpan(tile.columnSpan ?? 1);
       setRowSpan(tile.rowSpan ?? 1);
-      setGroupId(null);
+      setGroupId(initialGroupId ?? null);
       setCustomIconSvg(tile.customIconSvg ?? null);
       setLinkedConnectionId(tile.appConnectionId ?? null);
       setIconDetected(true); // assume detected if editing
@@ -334,7 +335,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     } else {
       setSelectedEntities([]);
     }
-  }, [tile, open]);
+  }, [tile, open, initialGroupId]);
 
   // Initialize selectedStats when enhancedType changes or when editing a tile
   useEffect(() => {

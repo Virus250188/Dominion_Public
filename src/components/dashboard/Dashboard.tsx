@@ -101,6 +101,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTile, setEditingTile] = useState<TileData | null>(null);
+  const [editingTileGroupId, setEditingTileGroupId] = useState<number | null>(null);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupTileData | null>(null);
   const [subDashboardDialogOpen, setSubDashboardDialogOpen] = useState(false);
@@ -111,13 +112,16 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const handleAddTile = useCallback(() => {
     setEditingTile(null);
+    setEditingTileGroupId(null);
     setDialogOpen(true);
   }, []);
 
   const handleEdit = useCallback((tile: TileData) => {
     setEditingTile(tile);
+    const group = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === tile.id));
+    setEditingTileGroupId(group?.id ?? null);
     setDialogOpen(true);
-  }, []);
+  }, [groupsWithTiles]);
 
   const handleDelete = useCallback((id: number) => {
     const tile = tiles.find((t) => t.id === id) ||
@@ -667,6 +671,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
         tile={editingTile}
+        initialGroupId={editingTileGroupId}
         foundationApps={foundationApps}
         appConnections={appConnections || []}
         groups={groupDataForDialog}

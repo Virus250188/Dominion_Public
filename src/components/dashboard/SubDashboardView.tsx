@@ -105,6 +105,7 @@ export function SubDashboardView({
     useState<GroupWithTiles[]>(initialGroupsWithTiles);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTile, setEditingTile] = useState<TileData | null>(null);
+  const [editingTileGroupId, setEditingTileGroupId] = useState<number | null>(null);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupTileData | null>(null);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
@@ -119,13 +120,16 @@ export function SubDashboardView({
 
   const handleAddTile = useCallback(() => {
     setEditingTile(null);
+    setEditingTileGroupId(null);
     setDialogOpen(true);
   }, []);
 
   const handleEdit = useCallback((tile: TileData) => {
     setEditingTile(tile);
+    const group = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === tile.id));
+    setEditingTileGroupId(group?.id ?? null);
     setDialogOpen(true);
-  }, []);
+  }, [groupsWithTiles]);
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -606,6 +610,7 @@ export function SubDashboardView({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         tile={editingTile}
+        initialGroupId={editingTileGroupId}
         foundationApps={foundationApps}
         groups={groupDataForDialog}
         onGroupsChange={(newGroups) =>
