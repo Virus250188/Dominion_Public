@@ -1,6 +1,16 @@
 -- Migration: Consolidate group assignment to GroupTile only
 -- Removes Tile.groupId FK (direct relation) and ensures a tile can only be in one group via @@unique([tileId]) on GroupTile
 
+-- Step 0: Backfill — ensure every Tile with groupId has a corresponding GroupTile entry
+-- This preserves group assignments that were stored via the old Tile.groupId FK
+INSERT OR IGNORE INTO "GroupTile" ("groupId", "tileId", "order", "createdAt")
+SELECT t."groupId", t."id", t."order", CURRENT_TIMESTAMP
+FROM "Tile" t
+WHERE t."groupId" IS NOT NULL
+AND NOT EXISTS (
+  SELECT 1 FROM "GroupTile" gt WHERE gt."tileId" = t."id"
+);
+
 -- Step 1: Recreate Tile table without groupId column
 -- RedefineTables
 PRAGMA defer_foreign_keys=ON;
