@@ -45,6 +45,7 @@ import { createAppConnection, getAppConnectionConfig } from "@/lib/actions/appCo
 import { getAllPlugins, getPlugin } from "@/plugins/registry";
 import type { AppPlugin, TileSize, ConfigField, CrawlEntityGroup } from "@/plugins/types";
 import { fuzzyMatchIcon } from "@/lib/icons";
+import { IconPicker } from "./IconPicker";
 
 // ─── Entity Picker Types ────────────────────────────────────────────────
 interface SelectedEntity {
@@ -180,6 +181,9 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
   const [customIconSvg, setCustomIconSvg] = useState<string | null>(null);
   const [iconUploadError, setIconUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Icon picker state
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   // Auto-detection state (icon/color only, NOT enhanced type)
   const [iconDetected, setIconDetected] = useState(false);
@@ -1071,6 +1075,16 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                   onChange={handleIconUpload}
                   className="hidden"
                 />
+                {/* Icon picker button */}
+                <button
+                  type="button"
+                  onClick={() => setIconPickerOpen(true)}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Icon auswaehlen"
+                >
+                  <Search className="h-3 w-3" />
+                  <span>Picker</span>
+                </button>
               </div>
               <div className="flex-1 space-y-1.5">
                 <Label htmlFor="title">Titel</Label>
@@ -1678,6 +1692,17 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <IconPicker
+        open={iconPickerOpen}
+        onOpenChange={setIconPickerOpen}
+        onSelect={(picked) => {
+          setIcon(picked.title);
+          setColor(`#${picked.hex}`);
+          setCustomIconSvg(null);
+          setIconDetected(true);
+        }}
+      />
     </Dialog>
   );
 }
