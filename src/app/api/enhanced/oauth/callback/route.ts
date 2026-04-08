@@ -182,32 +182,39 @@ export async function GET(request: NextRequest) {
 
     logger.info("oauth-callback", `OAuth tokens saved for plugin ${pluginId}, connection ${connectionId}`);
 
-    // Fix 1: Use JSON.stringify to safely embed values in <script> (prevents XSS)
-    const safePluginId = JSON.stringify(pluginId);
-    const safeConnectionId = JSON.stringify(connectionId);
-
     return new NextResponse(
       `<!DOCTYPE html>
       <html><head><title>OAuth erfolgreich</title></head>
       <body style="background:#0a0a0a;color:#fff;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-        <div style="text-align:center">
+        <div style="text-align:center"
+          data-plugin-id="${pluginId.replace(/"/g, "&quot;")}"
+          data-connection-id="${String(connectionId).replace(/"/g, "&quot;")}"
+          id="result">
           <p style="font-size:1.25rem;margin-bottom:0.5rem">&#10003; Erfolgreich verbunden</p>
           <p style="color:#888;font-size:0.875rem">Dieses Fenster schliesst sich automatisch...</p>
         </div>
         <script>
           try {
-            const bc = new BroadcastChannel("oauth-callback");
+            var el = document.getElementById("result");
+            var bc = new BroadcastChannel("oauth-callback");
             bc.postMessage({
               type: "oauth_success",
-              pluginId: ${safePluginId},
-              connectionId: ${safeConnectionId}
+              pluginId: el.dataset.pluginId,
+              connectionId: Number(el.dataset.connectionId)
             });
             bc.close();
           } catch(e) {}
           setTimeout(function() { window.close(); }, 2000);
         </script>
       </body></html>`,
-      { status: 200, headers: { "Content-Type": "text/html" } }
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
+          "X-Content-Type-Options": "nosniff",
+        },
+      }
     );
   } catch (e) {
     const message = (e as Error).message;
