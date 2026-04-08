@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSubDashboardWithData } from "@/lib/queries/subdashboards";
 import { getFoundationApps } from "@/lib/queries/tiles";
@@ -27,13 +27,13 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
   }
 
   const [subDashboard, foundationApps, settings] = await Promise.all([
-    getSubDashboardWithData(subId),
+    getSubDashboardWithData(userId, subId),
     getFoundationApps(),
     getUserSettings(userId),
   ]);
 
   if (!subDashboard) {
-    redirect("/");
+    notFound();
   }
 
   // Build set of tile IDs assigned to any group within this sub-dashboard

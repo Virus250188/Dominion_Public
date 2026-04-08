@@ -30,12 +30,15 @@ export async function getSubDashboards(userId: number) {
   }));
 }
 
-export async function getSubDashboardWithData(id: number) {
+export async function getSubDashboardWithData(userId: number, id: number) {
   const subDashboard = await prisma.subDashboard.findUnique({
     where: { id },
   });
 
   if (!subDashboard) return null;
+
+  // Verify ownership
+  if (subDashboard.userId !== userId) return null;
 
   // Fetch tiles belonging to this sub-dashboard
   const tiles = await prisma.tile.findMany({

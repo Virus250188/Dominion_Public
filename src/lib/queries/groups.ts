@@ -1,9 +1,9 @@
 import prisma from "@/lib/db";
 
-export async function getGroups(subDashboardId: number | null = null) {
+export async function getGroups(userId: number, subDashboardId: number | null = null) {
   // Fetch groups with basic fields only (filtered by sub-dashboard context)
   const groups = await prisma.tileGroup.findMany({
-    where: { subDashboardId },
+    where: { subDashboardId, userId },
     orderBy: { order: "asc" },
   });
 
@@ -35,10 +35,10 @@ export async function getGroups(subDashboardId: number | null = null) {
   });
 }
 
-export async function getGroupsWithFullTiles(subDashboardId: number | null = null) {
+export async function getGroupsWithFullTiles(userId: number, subDashboardId: number | null = null) {
   // Fetch groups filtered by sub-dashboard context (null = main dashboard)
   const groups = await prisma.tileGroup.findMany({
-    where: { subDashboardId },
+    where: { subDashboardId, userId },
     orderBy: { order: "asc" },
   });
 
@@ -66,12 +66,15 @@ export async function getGroupsWithFullTiles(subDashboardId: number | null = nul
   }));
 }
 
-export async function getGroupWithTiles(groupId: number) {
+export async function getGroupWithTiles(userId: number, groupId: number) {
   const group = await prisma.tileGroup.findUnique({
     where: { id: groupId },
   });
 
   if (!group) return null;
+
+  // Verify ownership
+  if (group.userId !== userId) return null;
 
   // Fetch assignments with full tile data
   const groupTiles = await prisma.groupTile.findMany({

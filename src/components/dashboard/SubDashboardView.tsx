@@ -376,13 +376,27 @@ export function SubDashboardView({
   );
 
   const handleToggleCollapsed = useCallback(
-    async (groupId: number) => {
+    (groupId: number) => {
+      // Optimistic update
       setGroupsWithTiles((prev) =>
         prev.map((g) =>
           g.id === groupId ? { ...g, collapsed: !g.collapsed } : g
         )
       );
-      await toggleGroupCollapsed(groupId);
+      // Persist to server
+      startTransition(async () => {
+        try {
+          await toggleGroupCollapsed(groupId);
+        } catch {
+          // Rollback on failure
+          setGroupsWithTiles((prev) =>
+            prev.map((g) =>
+              g.id === groupId ? { ...g, collapsed: !g.collapsed } : g
+            )
+          );
+          toast.error("Aktion fehlgeschlagen");
+        }
+      });
     },
     []
   );

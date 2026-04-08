@@ -12,7 +12,7 @@ export interface FoundationAppData {
   enhanced: boolean;
 }
 
-export async function getTiles(userId: number = 1) {
+export async function getTiles(userId: number) {
   return prisma.tile.findMany({
     where: { userId, subDashboardId: null },
     orderBy: [{ pinned: "desc" }, { order: "asc" }],

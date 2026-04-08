@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getGroupWithTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";
@@ -27,13 +27,13 @@ export default async function GroupPage({ params }: GroupPageProps) {
   }
 
   const [group, settings, allTiles] = await Promise.all([
-    getGroupWithTiles(groupId),
+    getGroupWithTiles(userId, groupId),
     getUserSettings(userId),
     getTiles(userId),
   ]);
 
   if (!group) {
-    redirect("/");
+    notFound();
   }
 
   // Map group tiles from the junction table

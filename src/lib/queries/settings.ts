@@ -1,6 +1,6 @@
 import prisma from "@/lib/db";
 
-export async function getUserSettings(userId: number = 1) {
+export async function getUserSettings(userId: number) {
   return prisma.userSettings.findUnique({
     where: { userId },
   });
