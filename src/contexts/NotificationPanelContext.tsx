@@ -15,9 +15,18 @@ const NotificationPanelContext = createContext<NotificationPanelContextValue>({
 });
 
 export function NotificationPanelProvider({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("dominion-panel-collapsed") === "true";
+  });
 
-  const toggle = useCallback(() => setCollapsed((prev) => !prev), []);
+  const toggle = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("dominion-panel-collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   return (
     <NotificationPanelContext.Provider value={{ collapsed, toggle, notificationCount: 0 }}>
