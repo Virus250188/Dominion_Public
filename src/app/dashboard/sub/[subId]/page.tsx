@@ -62,7 +62,6 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
       enhancedType: t.enhancedType,
       enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
       customIconSvg: t.customIconSvg,
-      groupId: t.groupId,
       appConnectionId: t.appConnectionId ?? null,
     }));
 
@@ -89,7 +88,6 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
       enhancedType: gt.tile.enhancedType,
       enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
       customIconSvg: gt.tile.customIconSvg,
-      groupId: g.id,
       appConnectionId: gt.tile.appConnectionId ?? null,
     })),
   }));

@@ -216,7 +216,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
       setHasPluginMatch(tile.type === "enhanced" && !!tile.enhancedType);
       setColumnSpan(tile.columnSpan ?? 1);
       setRowSpan(tile.rowSpan ?? 1);
-      setGroupId(tile.groupId ?? null);
+      setGroupId(null);
       setCustomIconSvg(tile.customIconSvg ?? null);
       setLinkedConnectionId(tile.appConnectionId ?? null);
       setIconDetected(true); // assume detected if editing

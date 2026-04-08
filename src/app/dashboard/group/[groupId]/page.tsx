@@ -52,7 +52,6 @@ export default async function GroupPage({ params }: GroupPageProps) {
     enhancedType: gt.tile.enhancedType,
     enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
     customIconSvg: gt.tile.customIconSvg,
-    groupId: group.id,
     appConnectionId: gt.tile.appConnectionId ?? null,
   }));
 
@@ -72,7 +71,6 @@ export default async function GroupPage({ params }: GroupPageProps) {
     enhancedType: t.enhancedType,
     enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
     customIconSvg: t.customIconSvg,
-    groupId: t.groupId,
     appConnectionId: t.appConnectionId ?? null,
   }));
 

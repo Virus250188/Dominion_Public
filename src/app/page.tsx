@@ -71,7 +71,6 @@ export default async function DashboardPage() {
       enhancedType: gt.tile.enhancedType,
       enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
       customIconSvg: gt.tile.customIconSvg,
-      groupId: g.id,
       appConnectionId: gt.tile.appConnectionId ?? null,
     })),
   }));
@@ -115,7 +114,6 @@ export default async function DashboardPage() {
             enhancedType: t.enhancedType,
             enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
             customIconSvg: t.customIconSvg,
-            groupId: t.groupId,
             appConnectionId: t.appConnectionId ?? null,
           }))}
           foundationApps={foundationApps}

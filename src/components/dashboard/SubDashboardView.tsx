@@ -238,7 +238,6 @@ export function SubDashboardView({
             enhancedType: created.enhancedType,
             enhancedConfig: created.enhancedConfig,
             customIconSvg: created.customIconSvg,
-            groupId: created.groupId,
             appConnectionId: created.appConnectionId ?? null,
           };
           setTiles((prev) => [...prev, newTile]);
@@ -269,7 +268,7 @@ export function SubDashboardView({
                   const alreadyIn = g.tiles.some((t) => t.id === tileId);
                   return alreadyIn
                     ? g
-                    : { ...g, tiles: [...g.tiles, { ...movingTile, groupId }] };
+                    : { ...g, tiles: [...g.tiles, movingTile] };
                 }
                 return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
               })
@@ -280,7 +279,7 @@ export function SubDashboardView({
             .flatMap((g) => g.tiles)
             .find((t) => t.id === tileId);
           if (groupTile) {
-            setTiles((prev) => [...prev, { ...groupTile, groupId: null }]);
+            setTiles((prev) => [...prev, groupTile]);
             setGroupsWithTiles((prev) =>
               prev.map((g) => ({
                 ...g,
@@ -334,7 +333,7 @@ export function SubDashboardView({
         if (deletedGroup) {
           setTiles((prev) => [
             ...prev,
-            ...deletedGroup.tiles.map((t) => ({ ...t, groupId: null })),
+            ...deletedGroup.tiles,
           ]);
         }
         setGroups((prev) => prev.filter((g) => g.id !== id));
@@ -425,10 +424,7 @@ export function SubDashboardView({
               color: created.color,
               order: created.order,
               collapsed: false,
-              tiles: newGroupTiles.map((t) => ({
-                ...t,
-                groupId: created.id,
-              })),
+              tiles: newGroupTiles,
             },
           ]);
           setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));

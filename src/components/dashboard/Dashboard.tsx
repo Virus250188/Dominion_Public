@@ -202,12 +202,14 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
           if (editingTile) {
             await updateTile(editingTile.id, data);
             const updatedTile = { ...editingTile, ...data, customIconSvg: data.customIconSvg ?? editingTile.customIconSvg };
-            const oldGroupId = editingTile.groupId;
+            // Determine old group from groupsWithTiles state
+            const oldGroupId = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === editingTile.id))?.id ?? null;
             const newGroupId = data.groupId;
             const groupChanged = oldGroupId !== newGroupId;
 
             if (groupChanged && newGroupId !== null) {
               // Moving to a group: remove from ungrouped, add to target group
+              await assignTileToGroup(editingTile.id, newGroupId);
               setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
               setGroupsWithTiles((prev) =>
                 prev.map((g) => {
@@ -223,6 +225,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
               );
             } else if (groupChanged && newGroupId === null) {
               // Moving out of group: remove from groups, add to ungrouped
+              await assignTileToGroup(editingTile.id, null);
               setGroupsWithTiles((prev) =>
                 prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
               );
@@ -264,7 +267,6 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
               enhancedType: created.enhancedType,
               enhancedConfig: created.enhancedConfig,
               customIconSvg: created.customIconSvg,
-              groupId: created.groupId,
               appConnectionId: created.appConnectionId ?? null,
             };
             setTiles((prev) => [...prev, newTile]);
@@ -302,7 +304,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                 if (g.id === groupId) {
                   // Add tile to this group (if not already there)
                   const alreadyIn = g.tiles.some((t) => t.id === tileId);
-                  return alreadyIn ? g : { ...g, tiles: [...g.tiles, { ...movingTile, groupId }] };
+                  return alreadyIn ? g : { ...g, tiles: [...g.tiles, movingTile] };
                 }
                 // Remove from other groups
                 return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
@@ -313,12 +315,10 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
           // Moving out of group back to ungrouped
           const groupTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId);
           if (groupTile) {
-            setTiles((prev) => [...prev, { ...groupTile, groupId: null }]);
+            setTiles((prev) => [...prev, groupTile]);
             setGroupsWithTiles((prev) =>
               prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
             );
-          } else {
-            setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, groupId: null } : t)));
           }
         }
       } catch {
@@ -370,12 +370,8 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         // Move group tiles back to ungrouped
         const deletedGroup = groupsWithTiles.find((g) => g.id === id);
         if (deletedGroup) {
-          setTiles((prev) => [
-            ...prev,
-            ...deletedGroup.tiles.map((t) => ({ ...t, groupId: null })),
-          ]);
+          setTiles((prev) => [...prev, ...deletedGroup.tiles]);
         }
-        setTiles((prev) => prev.map((t) => (t.groupId === id ? { ...t, groupId: null } : t)));
         setGroups((prev) => prev.filter((g) => g.id !== id));
         setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
         toast.success("Gruppe geloescht");
@@ -461,7 +457,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                 color: created.color,
                 order: created.order,
                 collapsed: false,
-                tiles: newGroupTiles.map((t) => ({ ...t, groupId: created.id })),
+                tiles: newGroupTiles,
               },
             ]);
             // Remove assigned tiles from ungrouped
