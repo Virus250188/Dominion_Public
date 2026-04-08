@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Sparkles, Lock, LockOpen, LogOut } from "lucide-react";
+import { Bell, Settings, Sparkles, Lock, LockOpen, LogOut } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -118,6 +118,13 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
             <span className="text-sm font-medium tabular-nums text-foreground">{time}</span>
             <span className="text-xs text-muted-foreground">{date}</span>
           </div>
+          {/* Notification bell — visible below xl where the panel is hidden */}
+          <button
+            className="flex xl:hidden h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-accent relative"
+            title="Benachrichtigungen"
+          >
+            <Bell className="h-5 w-5 text-muted-foreground" />
+          </button>
           <button
             onClick={aiConfigured ? () => setChatOpen((v) => !v) : undefined}
             className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
