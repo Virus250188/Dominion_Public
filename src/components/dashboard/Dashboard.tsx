@@ -229,6 +229,16 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                   return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
                 })
               );
+              setGroups((prev) => prev.map((g) => {
+                if (g.id === newGroupId) {
+                  const newIds = g.assignedTileIds.includes(editingTile.id)
+                    ? g.assignedTileIds
+                    : [...g.assignedTileIds, editingTile.id];
+                  return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+                }
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
             } else if (groupChanged && newGroupId === null) {
               // Moving out of group: remove from groups, add to ungrouped
               await assignTileToGroup(editingTile.id, null);
@@ -236,6 +246,10 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                 prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
               );
               setTiles((prev) => [...prev, updatedTile]);
+              setGroups((prev) => prev.map((g) => {
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
             } else {
               // Same group — just update in place
               setTiles((prev) =>
@@ -309,6 +323,16 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
             return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
           })
         );
+        setGroups((prev) => prev.map((g) => {
+          if (g.id === groupId) {
+            const newIds = g.assignedTileIds.includes(tileId)
+              ? g.assignedTileIds
+              : [...g.assignedTileIds, tileId];
+            return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+          }
+          const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+          return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+        }));
       }
     } else {
       // Moving out of group back to ungrouped — use functional updater
@@ -326,6 +350,10 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
       if (removedTile) {
         setTiles((prev) => [...prev, removedTile!]);
       }
+      setGroups((prev) => prev.map((g) => {
+        const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+        return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+      }));
     }
 
     // Persist to server (non-blocking)

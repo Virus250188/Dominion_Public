@@ -213,17 +213,60 @@ export function SubDashboardView({
             ...data,
             customIconSvg: data.customIconSvg ?? editingTile.customIconSvg,
           };
-          setTiles((prev) =>
-            prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
-          );
-          setGroupsWithTiles((prev) =>
-            prev.map((g) => ({
-              ...g,
-              tiles: g.tiles.map((t) =>
-                t.id === editingTile.id ? updatedTile : t
-              ),
-            }))
-          );
+          const oldGroupId = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === editingTile.id))?.id ?? null;
+          const newGroupId = data.groupId;
+          const groupChanged = oldGroupId !== newGroupId;
+
+          if (groupChanged && newGroupId !== null) {
+            // Moving to a group: remove from ungrouped, add to target group
+            await assignTileToGroup(editingTile.id, newGroupId);
+            setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => {
+                if (g.id === newGroupId) {
+                  const alreadyIn = g.tiles.some((t) => t.id === editingTile.id);
+                  return alreadyIn
+                    ? { ...g, tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)) }
+                    : { ...g, tiles: [...g.tiles, updatedTile] };
+                }
+                return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
+              })
+            );
+            setGroups((prev) => prev.map((g) => {
+              if (g.id === newGroupId) {
+                const newIds = g.assignedTileIds.includes(editingTile.id)
+                  ? g.assignedTileIds
+                  : [...g.assignedTileIds, editingTile.id];
+                return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+              }
+              const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+            }));
+          } else if (groupChanged && newGroupId === null) {
+            // Moving out of group: remove from groups, add to ungrouped
+            await assignTileToGroup(editingTile.id, null);
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
+            );
+            setTiles((prev) => [...prev, updatedTile]);
+            setGroups((prev) => prev.map((g) => {
+              const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+            }));
+          } else {
+            // Same group — just update in place
+            setTiles((prev) =>
+              prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
+            );
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => ({
+                ...g,
+                tiles: g.tiles.map((t) =>
+                  t.id === editingTile.id ? updatedTile : t
+                ),
+              }))
+            );
+          }
         } else {
           // Create tile and assign to this sub-dashboard
           const created = await createTile({
@@ -280,6 +323,16 @@ export function SubDashboardView({
                 return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
               })
             );
+            setGroups((prev) => prev.map((g) => {
+              if (g.id === groupId) {
+                const newIds = g.assignedTileIds.includes(tileId)
+                  ? g.assignedTileIds
+                  : [...g.assignedTileIds, tileId];
+                return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+              }
+              const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+            }));
           }
         } else {
           const groupTile = groupsWithTiles
@@ -293,6 +346,10 @@ export function SubDashboardView({
                 tiles: g.tiles.filter((t) => t.id !== tileId),
               }))
             );
+            setGroups((prev) => prev.map((g) => {
+              const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+            }));
           }
         }
       });
