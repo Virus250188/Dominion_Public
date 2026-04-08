@@ -152,6 +152,11 @@ export function SubDashboardView({
               tiles: g.tiles.filter((t) => t.id !== id),
             }))
           );
+          setGroups((prev) => prev.map((g) => ({
+            ...g,
+            assignedTileIds: g.assignedTileIds.filter((tid) => tid !== id),
+            tileCount: g.assignedTileIds.filter((tid) => tid !== id).length,
+          })));
           toast.success("App geloescht");
         } catch {
           toast.error("Loeschen fehlgeschlagen");
@@ -320,7 +325,18 @@ export function SubDashboardView({
               customIconSvg: created.customIconSvg,
               appConnectionId: created.appConnectionId ?? null,
             };
-            setTiles((prev) => [...prev, newTile]);
+            if (data.groupId) {
+              await assignTileToGroup(created.id, data.groupId);
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => g.id === data.groupId ? { ...g, tiles: [...g.tiles, newTile] } : g)
+              );
+              setGroups((prev) => prev.map((g) => g.id === data.groupId
+                ? { ...g, assignedTileIds: [...g.assignedTileIds, created.id], tileCount: g.tileCount + 1 }
+                : g
+              ));
+            } else {
+              setTiles((prev) => [...prev, newTile]);
+            }
             toast.success("App hinzugefuegt");
           }
           setDialogOpen(false);

@@ -206,6 +206,15 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
   // Whether we are editing an enhanced tile with an AppConnection
   const isEditingEnhancedWithConnection = !!(tile && tile.type === "enhanced" && tile.appConnectionId);
 
+  // Group mode side-effect: close TileDialog and open GroupDialog
+  useEffect(() => {
+    if (dialogMode === "group" && open) {
+      onOpenChange(false);
+      if (onOpenGroupDialog) onOpenGroupDialog();
+      setDialogMode("select");
+    }
+  }, [dialogMode, open, onOpenChange, onOpenGroupDialog]);
+
   // Reset form when tile changes
   useEffect(() => {
     if (tile) {
@@ -940,31 +949,6 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
                 <div className="text-xs text-muted-foreground mt-1">Sub-Dashboard mit Apps</div>
               </div>
             </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // ── Group mode: close TileDialog and open GroupDialog ──
-  if (dialogMode === "group") {
-    // Immediately close this dialog and open the GroupDialog
-    if (onOpenGroupDialog) {
-      // Use a microtask to avoid state update during render
-      queueMicrotask(() => {
-        onOpenChange(false);
-        onOpenGroupDialog();
-      });
-    }
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="glass-surface sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Gruppen-Dashboard</DialogTitle>
-          </DialogHeader>
-          <div className="py-8 text-center">
-            <LayoutGrid className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Gruppen-Dashboard wird erstellt...</p>
           </div>
         </DialogContent>
       </Dialog>
