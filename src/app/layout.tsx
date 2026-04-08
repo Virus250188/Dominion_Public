@@ -74,7 +74,16 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${wallpoet.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-animated-gradient">
+      <body className="min-h-screen">
+        {/* SVG filters for crystal glass refraction */}
+        <svg aria-hidden="true" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+          <defs>
+            <filter id="crystal-refract" x="-5%" y="-5%" width="110%" height="110%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.01 0.018" numOctaves="4" seed="11" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
         <ThemeProvider
           defaultTheme={dbTheme}
           defaultBackground={dbBackground}
