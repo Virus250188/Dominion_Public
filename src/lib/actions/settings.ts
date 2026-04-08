@@ -22,6 +22,8 @@ export async function updateUserSettings(
     aiApiKey?: string | null;
     aiModel?: string | null;
     aiEndpoint?: string | null;
+    dashboardWidthPercent?: number;
+    groupsWidthPercent?: number;
   }
 ) {
   const authenticatedUserId = await requireUserId();
@@ -36,6 +38,14 @@ export async function updateUserSettings(
   // Encrypt API key before storing
   if (data.aiApiKey) {
     data.aiApiKey = encrypt(data.aiApiKey);
+  }
+
+  // Validate and clamp width percentages
+  if (data.dashboardWidthPercent !== undefined) {
+    data.dashboardWidthPercent = Math.max(30, Math.min(100, data.dashboardWidthPercent));
+  }
+  if (data.groupsWidthPercent !== undefined) {
+    data.groupsWidthPercent = Math.max(30, Math.min(100, data.groupsWidthPercent));
   }
 
   const settings = await prisma.userSettings.upsert({

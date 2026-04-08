@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getGroupWithTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";
@@ -27,13 +27,13 @@ export default async function GroupPage({ params }: GroupPageProps) {
   }
 
   const [group, settings, allTiles] = await Promise.all([
-    getGroupWithTiles(groupId),
+    getGroupWithTiles(userId, groupId),
     getUserSettings(userId),
     getTiles(userId),
   ]);
 
   if (!group) {
-    redirect("/");
+    notFound();
   }
 
   // Map group tiles from the junction table
@@ -52,7 +52,6 @@ export default async function GroupPage({ params }: GroupPageProps) {
     enhancedType: gt.tile.enhancedType,
     enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
     customIconSvg: gt.tile.customIconSvg,
-    groupId: group.id,
     appConnectionId: gt.tile.appConnectionId ?? null,
   }));
 
@@ -72,14 +71,13 @@ export default async function GroupPage({ params }: GroupPageProps) {
     enhancedType: t.enhancedType,
     enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
     customIconSvg: t.customIconSvg,
-    groupId: t.groupId,
     appConnectionId: t.appConnectionId ?? null,
   }));
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="flex w-full flex-1 flex-col gap-6 px-6 py-8">
         <GroupDashboard
           group={{
             id: group.id,

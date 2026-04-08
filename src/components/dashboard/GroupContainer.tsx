@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { GROUP_ICON_MAP } from "./GroupTile";
+import { useSortable } from "@dnd-kit/react/sortable";
 
 interface GroupContainerProps {
+  index: number;
   group: {
     id: number;
     title: string;
@@ -36,6 +38,7 @@ interface GroupContainerProps {
 }
 
 export function GroupContainer({
+  index,
   group,
   tiles,
   gridColumns = 6,
@@ -50,6 +53,13 @@ export function GroupContainer({
 }: GroupContainerProps) {
   const { editMode } = useEditMode();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const { ref, handleRef, isDragging } = useSortable({
+    id: group.id,
+    index,
+    group: "groups",
+    disabled: !editMode,
+  });
   // Local collapsed state as fallback when no external handler is provided
   const [localCollapsed, setLocalCollapsed] = useState(group.collapsed);
   const isCollapsed = onToggleCollapsed ? group.collapsed : localCollapsed;
@@ -66,7 +76,8 @@ export function GroupContainer({
 
   return (
     <div
-      className="glass-card overflow-hidden border-l-4"
+      ref={ref}
+      className={cn("glass-card overflow-hidden border-l-4", isDragging && "opacity-50")}
       style={{ borderLeftColor: group.color }}
     >
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -79,8 +90,15 @@ export function GroupContainer({
           "hover:bg-white/[0.04]"
         )}
       >
-        {/* Drag handle (visual only for now) */}
-        <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground/40 cursor-grab" />
+        {/* Drag handle — uses handleRef so only this element initiates drag */}
+        <div
+          ref={handleRef}
+          onPointerDown={(e) => { if (editMode) e.stopPropagation(); }}
+          onClick={(e) => { if (editMode) e.stopPropagation(); }}
+          className={cn("flex-shrink-0 touch-none", editMode ? "cursor-grab" : "cursor-default")}
+        >
+          <GripVertical className={cn("h-4 w-4", editMode ? "text-muted-foreground/70" : "text-muted-foreground/40")} />
+        </div>
 
         {/* Group icon with color tint */}
         <div
@@ -199,11 +217,6 @@ export function GroupContainer({
                 <>
                   {/* Responsive overrides for group sub-grid */}
                   <style>{`
-                    @media (max-width: 1023px) {
-                      .group-grid-${group.id} {
-                        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-                      }
-                    }
                     @media (max-width: 639px) {
                       .group-grid-${group.id} {
                         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -220,7 +233,7 @@ export function GroupContainer({
                       visible: { transition: { staggerChildren: 0.04 } },
                     }}
                     style={{
-                      gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+                      gridTemplateColumns: `repeat(auto-fill, minmax(180px, 1fr))`,
                       gridAutoRows: "160px",
                       gridAutoFlow: "dense",
                     }}

@@ -86,13 +86,7 @@ export async function deleteAppConnection(id: number) {
     throw new Error("AppConnection not found or access denied");
   }
 
-  // Unlink tiles (set appConnectionId to null) — schema has onDelete: SetNull
-  await prisma.tile.updateMany({
-    where: { appConnectionId: id },
-    data: { appConnectionId: null },
-  });
-
-  // Delete the connection itself
+  // Prisma cascade (onDelete: SetNull) handles unlinking tiles automatically
   await prisma.appConnection.delete({ where: { id } });
 
   revalidatePath("/");

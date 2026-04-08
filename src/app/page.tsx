@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/dashboard/Header";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SearchBar } from "@/components/dashboard/SearchBar";
 import { getTiles, getFoundationApps } from "@/lib/queries/tiles";
 import { getSearchProviders } from "@/lib/queries/search";
@@ -22,8 +23,8 @@ export default async function DashboardPage() {
     getTiles(userId),
     getFoundationApps(),
     getSearchProviders(),
-    getGroups(),
-    getGroupsWithFullTiles(),
+    getGroups(userId),
+    getGroupsWithFullTiles(userId),
     getUserSettings(userId),
     getSubDashboards(userId),
     getAppConnections(userId),
@@ -71,7 +72,6 @@ export default async function DashboardPage() {
       enhancedType: gt.tile.enhancedType,
       enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
       customIconSvg: gt.tile.customIconSvg,
-      groupId: g.id,
       appConnectionId: gt.tile.appConnectionId ?? null,
     })),
   }));
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       <div className="md:hidden px-6 pt-4">
         <SearchBar providers={searchProviders} tiles={searchTiles} />
       </div>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <DashboardLayout initialWidthPercent={settings?.dashboardWidthPercent ?? 70}>
         <Dashboard
           initialTiles={ungroupedTiles.map((t) => ({
             id: t.id,
@@ -115,7 +115,6 @@ export default async function DashboardPage() {
             enhancedType: t.enhancedType,
             enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
             customIconSvg: t.customIconSvg,
-            groupId: t.groupId,
             appConnectionId: t.appConnectionId ?? null,
           }))}
           foundationApps={foundationApps}
@@ -142,7 +141,7 @@ export default async function DashboardPage() {
           initialSubDashboards={subDashboards}
           gridColumns={settings?.gridColumns ?? 6}
         />
-      </main>
+      </DashboardLayout>
     </div>
   );
 }

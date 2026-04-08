@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getSubDashboardWithData } from "@/lib/queries/subdashboards";
 import { getFoundationApps } from "@/lib/queries/tiles";
@@ -27,13 +27,13 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
   }
 
   const [subDashboard, foundationApps, settings] = await Promise.all([
-    getSubDashboardWithData(subId),
+    getSubDashboardWithData(userId, subId),
     getFoundationApps(),
     getUserSettings(userId),
   ]);
 
   if (!subDashboard) {
-    redirect("/");
+    notFound();
   }
 
   // Build set of tile IDs assigned to any group within this sub-dashboard
@@ -62,7 +62,6 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
       enhancedType: t.enhancedType,
       enhancedConfig: t.enhancedConfig ? decrypt(t.enhancedConfig) : t.enhancedConfig,
       customIconSvg: t.customIconSvg,
-      groupId: t.groupId,
       appConnectionId: t.appConnectionId ?? null,
     }));
 
@@ -89,7 +88,6 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
       enhancedType: gt.tile.enhancedType,
       enhancedConfig: gt.tile.enhancedConfig ? decrypt(gt.tile.enhancedConfig) : gt.tile.enhancedConfig,
       customIconSvg: gt.tile.customIconSvg,
-      groupId: g.id,
       appConnectionId: gt.tile.appConnectionId ?? null,
     })),
   }));
@@ -108,7 +106,7 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="flex w-full flex-1 flex-col gap-6 px-6 py-8">
         <SubDashboardView
           subDashboard={{
             id: subDashboard.id,

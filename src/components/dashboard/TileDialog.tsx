@@ -45,6 +45,7 @@ import { createAppConnection, getAppConnectionConfig } from "@/lib/actions/appCo
 import { getAllPlugins, getPlugin } from "@/plugins/registry";
 import type { AppPlugin, TileSize, ConfigField, CrawlEntityGroup } from "@/plugins/types";
 import { fuzzyMatchIcon } from "@/lib/icons";
+import { IconPicker } from "./IconPicker";
 
 // ─── Entity Picker Types ────────────────────────────────────────────────
 interface SelectedEntity {
@@ -114,6 +115,7 @@ interface TileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tile: TileData | null;
+  initialGroupId?: number | null;
   foundationApps: FoundationAppData[];
   appConnections?: AppConnectionSummary[];
   groups: GroupData[];
@@ -136,7 +138,7 @@ interface TileDialogProps {
   onOpenGroupDialog?: () => void;
 }
 
-export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnections = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
+export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundationApps, appConnections = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
   // Dialog mode: "select" for new tile mode chooser, "app" for app form, "group" for group placeholder
   const [dialogMode, setDialogMode] = useState<"select" | "app" | "group">("select");
 
@@ -181,6 +183,9 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
   const [iconUploadError, setIconUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Icon picker state
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+
   // Auto-detection state (icon/color only, NOT enhanced type)
   const [iconDetected, setIconDetected] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,6 +206,15 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
   // Whether we are editing an enhanced tile with an AppConnection
   const isEditingEnhancedWithConnection = !!(tile && tile.type === "enhanced" && tile.appConnectionId);
 
+  // Group mode side-effect: close TileDialog and open GroupDialog
+  useEffect(() => {
+    if (dialogMode === "group" && open) {
+      onOpenChange(false);
+      if (onOpenGroupDialog) onOpenGroupDialog();
+      setDialogMode("select");
+    }
+  }, [dialogMode, open, onOpenChange, onOpenGroupDialog]);
+
   // Reset form when tile changes
   useEffect(() => {
     if (tile) {
@@ -216,7 +230,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
       setHasPluginMatch(tile.type === "enhanced" && !!tile.enhancedType);
       setColumnSpan(tile.columnSpan ?? 1);
       setRowSpan(tile.rowSpan ?? 1);
-      setGroupId(tile.groupId ?? null);
+      setGroupId(initialGroupId ?? null);
       setCustomIconSvg(tile.customIconSvg ?? null);
       setLinkedConnectionId(tile.appConnectionId ?? null);
       setIconDetected(true); // assume detected if editing
@@ -330,7 +344,7 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     } else {
       setSelectedEntities([]);
     }
-  }, [tile, open]);
+  }, [tile, open, initialGroupId]);
 
   // Initialize selectedStats when enhancedType changes or when editing a tile
   useEffect(() => {
@@ -941,31 +955,6 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
     );
   }
 
-  // ── Group mode: close TileDialog and open GroupDialog ──
-  if (dialogMode === "group") {
-    // Immediately close this dialog and open the GroupDialog
-    if (onOpenGroupDialog) {
-      // Use a microtask to avoid state update during render
-      queueMicrotask(() => {
-        onOpenChange(false);
-        onOpenGroupDialog();
-      });
-    }
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="glass-surface sm:max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Gruppen-Dashboard</DialogTitle>
-          </DialogHeader>
-          <div className="py-8 text-center">
-            <LayoutGrid className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Gruppen-Dashboard wird erstellt...</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   // ── App Form View ──
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1071,6 +1060,16 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
                   onChange={handleIconUpload}
                   className="hidden"
                 />
+                {/* Icon picker button */}
+                <button
+                  type="button"
+                  onClick={() => setIconPickerOpen(true)}
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Icon auswaehlen"
+                >
+                  <Search className="h-3 w-3" />
+                  <span>Picker</span>
+                </button>
               </div>
               <div className="flex-1 space-y-1.5">
                 <Label htmlFor="title">Titel</Label>
@@ -1678,6 +1677,17 @@ export function TileDialog({ open, onOpenChange, tile, foundationApps, appConnec
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <IconPicker
+        open={iconPickerOpen}
+        onOpenChange={setIconPickerOpen}
+        onSelect={(picked) => {
+          setIcon(picked.title);
+          setColor(`#${picked.hex}`);
+          setCustomIconSvg(null);
+          setIconDetected(true);
+        }}
+      />
     </Dialog>
   );
 }

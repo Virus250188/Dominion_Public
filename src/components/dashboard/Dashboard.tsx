@@ -9,6 +9,7 @@ import { GroupContainer } from "./GroupContainer";
 import { GroupDialog } from "./GroupDialog";
 import { SubDashboardTile, type SubDashboardData } from "./SubDashboardTile";
 import { SubDashboardDialog } from "./SubDashboardDialog";
+import { DragDropProvider } from "@dnd-kit/react";
 import { createTile, updateTile, deleteTile, reorderTiles, togglePinTile, createEnhancedTileWithConnection } from "@/lib/actions/tiles";
 import {
   createGroup,
@@ -17,6 +18,7 @@ import {
   assignTileToGroup,
   assignTilesToGroup,
   toggleGroupCollapsed,
+  reorderGroups,
 } from "@/lib/actions/groups";
 import {
   createSubDashboard,
@@ -99,6 +101,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTile, setEditingTile] = useState<TileData | null>(null);
+  const [editingTileGroupId, setEditingTileGroupId] = useState<number | null>(null);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupTileData | null>(null);
   const [subDashboardDialogOpen, setSubDashboardDialogOpen] = useState(false);
@@ -109,13 +112,16 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
 
   const handleAddTile = useCallback(() => {
     setEditingTile(null);
+    setEditingTileGroupId(null);
     setDialogOpen(true);
   }, []);
 
   const handleEdit = useCallback((tile: TileData) => {
     setEditingTile(tile);
+    const group = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === tile.id));
+    setEditingTileGroupId(group?.id ?? null);
     setDialogOpen(true);
-  }, []);
+  }, [groupsWithTiles]);
 
   const handleDelete = useCallback((id: number) => {
     const tile = tiles.find((t) => t.id === id) ||
@@ -132,6 +138,11 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         setGroupsWithTiles((prev) =>
           prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== id) }))
         );
+        setGroups((prev) => prev.map((g) => ({
+          ...g,
+          assignedTileIds: g.assignedTileIds.filter((tid) => tid !== id),
+          tileCount: g.assignedTileIds.filter((tid) => tid !== id).length,
+        })));
         toast.success("App geloescht");
       } catch {
         toast.error("Loeschen fehlgeschlagen");
@@ -202,12 +213,15 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
           if (editingTile) {
             await updateTile(editingTile.id, data);
             const updatedTile = { ...editingTile, ...data, customIconSvg: data.customIconSvg ?? editingTile.customIconSvg };
-            const oldGroupId = editingTile.groupId;
+            // Use editingTileGroupId (set correctly in handleEdit) instead of
+            // re-deriving from groupsWithTiles which may be stale in this closure
+            const oldGroupId = editingTileGroupId;
             const newGroupId = data.groupId;
             const groupChanged = oldGroupId !== newGroupId;
 
             if (groupChanged && newGroupId !== null) {
               // Moving to a group: remove from ungrouped, add to target group
+              await assignTileToGroup(editingTile.id, newGroupId);
               setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
               setGroupsWithTiles((prev) =>
                 prev.map((g) => {
@@ -221,12 +235,27 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                   return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
                 })
               );
+              setGroups((prev) => prev.map((g) => {
+                if (g.id === newGroupId) {
+                  const newIds = g.assignedTileIds.includes(editingTile.id)
+                    ? g.assignedTileIds
+                    : [...g.assignedTileIds, editingTile.id];
+                  return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+                }
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
             } else if (groupChanged && newGroupId === null) {
               // Moving out of group: remove from groups, add to ungrouped
+              await assignTileToGroup(editingTile.id, null);
               setGroupsWithTiles((prev) =>
                 prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
               );
               setTiles((prev) => [...prev, updatedTile]);
+              setGroups((prev) => prev.map((g) => {
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
             } else {
               // Same group — just update in place
               setTiles((prev) =>
@@ -264,10 +293,20 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
               enhancedType: created.enhancedType,
               enhancedConfig: created.enhancedConfig,
               customIconSvg: created.customIconSvg,
-              groupId: created.groupId,
               appConnectionId: created.appConnectionId ?? null,
             };
-            setTiles((prev) => [...prev, newTile]);
+            if (data.groupId) {
+              await assignTileToGroup(created.id, data.groupId);
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => g.id === data.groupId ? { ...g, tiles: [...g.tiles, newTile] } : g)
+              );
+              setGroups((prev) => prev.map((g) => g.id === data.groupId
+                ? { ...g, assignedTileIds: [...g.assignedTileIds, created.id], tileCount: g.tileCount + 1 }
+                : g
+              ));
+            } else {
+              setTiles((prev) => [...prev, newTile]);
+            }
             toast.success("App hinzugefuegt");
           }
           setDialogOpen(false);
@@ -277,55 +316,73 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         }
       });
     },
-    [editingTile]
+    [editingTile, editingTileGroupId]
   );
 
   const handleMoveToGroup = useCallback((tileId: number, groupId: number | null) => {
+    // Capture previous state for rollback
+    const prevTiles = tiles;
+    const prevGroupsWithTiles = groupsWithTiles;
+    const prevGroups = groups;
+
+    if (groupId !== null) {
+      // Moving to a group: find the tile from ungrouped or another group
+      const ungroupedTile = tiles.find((t) => t.id === tileId);
+      const otherGroupTile = !ungroupedTile
+        ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
+        : null;
+      const movingTile = ungroupedTile || otherGroupTile;
+
+      if (movingTile) {
+        // Optimistic: remove from ungrouped, move between groups
+        setTiles((prev) => prev.filter((t) => t.id !== tileId));
+        setGroupsWithTiles((prev) =>
+          prev.map((g) => {
+            if (g.id === groupId) {
+              const alreadyIn = g.tiles.some((t) => t.id === tileId);
+              return alreadyIn ? g : { ...g, tiles: [...g.tiles, movingTile] };
+            }
+            return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
+          })
+        );
+        setGroups((prev) => prev.map((g) => {
+          if (g.id === groupId) {
+            const newIds = g.assignedTileIds.includes(tileId)
+              ? g.assignedTileIds
+              : [...g.assignedTileIds, tileId];
+            return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+          }
+          const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+          return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+        }));
+      }
+    } else {
+      // Moving out of group back to ungrouped
+      const removedTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId) ?? null;
+      setGroupsWithTiles((prev) =>
+        prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
+      );
+      if (removedTile) {
+        setTiles((prev) => [...prev, removedTile]);
+      }
+      setGroups((prev) => prev.map((g) => {
+        const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+        return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+      }));
+    }
+
+    // Persist to server (non-blocking), rollback on failure
     startTransition(async () => {
       try {
         await assignTileToGroup(tileId, groupId);
-        // If moving to a group, remove from ungrouped tiles and add to group
-        if (groupId !== null) {
-          const tile = tiles.find((t) => t.id === tileId);
-          // Also check group tiles for cross-group moves
-          const groupTile = !tile
-            ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
-            : null;
-          const movingTile = tile || groupTile;
-
-          if (movingTile) {
-            // Remove from ungrouped tiles
-            setTiles((prev) => prev.filter((t) => t.id !== tileId));
-            // Remove from any current group and add to target group
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => {
-                if (g.id === groupId) {
-                  // Add tile to this group (if not already there)
-                  const alreadyIn = g.tiles.some((t) => t.id === tileId);
-                  return alreadyIn ? g : { ...g, tiles: [...g.tiles, { ...movingTile, groupId }] };
-                }
-                // Remove from other groups
-                return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
-              })
-            );
-          }
-        } else {
-          // Moving out of group back to ungrouped
-          const groupTile = groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId);
-          if (groupTile) {
-            setTiles((prev) => [...prev, { ...groupTile, groupId: null }]);
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== tileId) }))
-            );
-          } else {
-            setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, groupId: null } : t)));
-          }
-        }
       } catch {
+        setTiles(prevTiles);
+        setGroupsWithTiles(prevGroupsWithTiles);
+        setGroups(prevGroups);
         toast.error("Verschieben fehlgeschlagen");
       }
     });
-  }, [tiles, groupsWithTiles]);
+  }, [tiles, groupsWithTiles, groups]);
 
   const handleToggleCollapsed = useCallback((groupId: number) => {
     // Optimistic update
@@ -370,12 +427,8 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         // Move group tiles back to ungrouped
         const deletedGroup = groupsWithTiles.find((g) => g.id === id);
         if (deletedGroup) {
-          setTiles((prev) => [
-            ...prev,
-            ...deletedGroup.tiles.map((t) => ({ ...t, groupId: null })),
-          ]);
+          setTiles((prev) => [...prev, ...deletedGroup.tiles]);
         }
-        setTiles((prev) => prev.map((t) => (t.groupId === id ? { ...t, groupId: null } : t)));
         setGroups((prev) => prev.filter((g) => g.id !== id));
         setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
         toast.success("Gruppe geloescht");
@@ -461,7 +514,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
                 color: created.color,
                 order: created.order,
                 collapsed: false,
-                tiles: newGroupTiles.map((t) => ({ ...t, groupId: created.id })),
+                tiles: newGroupTiles,
               },
             ]);
             // Remove assigned tiles from ungrouped
@@ -565,6 +618,40 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
     order: g.order,
   }));
 
+  const handleGroupDragEnd = useCallback(
+    (event: { operation: { source: { id: string | number } | null; target: { id: string | number } | null }; canceled: boolean }) => {
+      if (event.canceled) return;
+
+      const { source, target } = event.operation;
+      if (!source || !target) return;
+
+      const sourceId = source.id;
+      const targetId = target.id;
+      if (sourceId === targetId) return;
+
+      const fromIndex = groupsWithTiles.findIndex((g) => g.id === sourceId);
+      const toIndex = groupsWithTiles.findIndex((g) => g.id === targetId);
+      if (fromIndex === -1 || toIndex === -1) return;
+
+      const reordered = [...groupsWithTiles];
+      const [moved] = reordered.splice(fromIndex, 1);
+      reordered.splice(toIndex, 0, moved);
+
+      const previousOrder = groupsWithTiles;
+      setGroupsWithTiles(reordered);
+
+      startTransition(async () => {
+        try {
+          await reorderGroups(reordered.map((g) => g.id));
+        } catch {
+          setGroupsWithTiles(previousOrder);
+          toast.error("Gruppen-Reihenfolge konnte nicht gespeichert werden");
+        }
+      });
+    },
+    [groupsWithTiles],
+  );
+
   return (
     <>
       {/* Main tile grid with ungrouped tiles only */}
@@ -600,30 +687,33 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
             <div className="h-px flex-1 bg-border/50" />
           </div>
 
-          <div className="flex flex-col gap-4">
-            {groupsWithTiles.map((group) => (
-              <GroupContainer
-                key={group.id}
-                group={group}
-                tiles={group.tiles}
-                gridColumns={gridColumns}
-                onEditGroup={(g) => {
-                  handleEditGroup({
-                    ...g,
-                    order: group.order,
-                    tileCount: group.tiles.length,
-                  });
-                }}
-                onDeleteGroup={handleDeleteGroup}
-                onEditTile={handleEdit}
-                onDeleteTile={handleDelete}
-                onTogglePin={handleTogglePin}
-                onToggleCollapsed={handleToggleCollapsed}
-                groups={groupDataForDialog}
-                onMoveToGroup={handleMoveToGroup}
-              />
-            ))}
-          </div>
+          <DragDropProvider onDragEnd={handleGroupDragEnd}>
+            <div className="flex flex-col gap-4">
+              {groupsWithTiles.map((group, index) => (
+                <GroupContainer
+                  key={group.id}
+                  index={index}
+                  group={group}
+                  tiles={group.tiles}
+                  gridColumns={gridColumns}
+                  onEditGroup={(g) => {
+                    handleEditGroup({
+                      ...g,
+                      order: group.order,
+                      tileCount: group.tiles.length,
+                    });
+                  }}
+                  onDeleteGroup={handleDeleteGroup}
+                  onEditTile={handleEdit}
+                  onDeleteTile={handleDelete}
+                  onTogglePin={handleTogglePin}
+                  onToggleCollapsed={handleToggleCollapsed}
+                  groups={groupDataForDialog}
+                  onMoveToGroup={handleMoveToGroup}
+                />
+              ))}
+            </div>
+          </DragDropProvider>
         </>
       )}
 
@@ -631,6 +721,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
         tile={editingTile}
+        initialGroupId={editingTileGroupId}
         foundationApps={foundationApps}
         appConnections={appConnections || []}
         groups={groupDataForDialog}

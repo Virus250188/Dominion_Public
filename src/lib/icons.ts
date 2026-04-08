@@ -18,6 +18,7 @@ const FOUNDATION_ICON_MAP: Record<string, string> = {
   "Bazarr": "Subtitleedit",
   "Navidrome": "Musicbrainz",
   "PhotoPrism": "Googlephotos",
+  "Emby": "Emby",
 
   // ── Network ─────────────────────────────────────────────────────────
   "Pi-hole": "Pihole",
@@ -27,6 +28,7 @@ const FOUNDATION_ICON_MAP: Record<string, string> = {
   "WireGuard": "Wireguard",
   "Tailscale": "Tailscale",
   "Caddy": "Caddy",
+  "OPNsense": "Opnsense",
 
   // ── System ──────────────────────────────────────────────────────────
   "Portainer": "Portainer",
@@ -46,6 +48,7 @@ const FOUNDATION_ICON_MAP: Record<string, string> = {
   "qBittorrent": "Qbittorrent",
   "Transmission": "Transmission",
   "Deluge": "Deluge",
+  // JDownloader: skipped — no "siJdownloader" in simple-icons
 
   // ── Security ────────────────────────────────────────────────────────
   "Vaultwarden": "Vaultwarden",
@@ -71,10 +74,15 @@ const FOUNDATION_ICON_MAP: Record<string, string> = {
   "Drone CI": "Drone",
   "Jenkins": "Jenkins",
   "VS Code Server": "Vscodium",
+  "GitHub": "Github",
+  "Docker": "Docker",
+  "Kubernetes": "Kubernetes",
 
   // ── Storage ─────────────────────────────────────────────────────────
   "MinIO": "Minio",
   "Seafile": "Seafile",
+  "TrueNAS": "Truenas",
+  "Unraid": "Unraid",
 
   // ── Streaming / Social ───────────────────────────────────────────────
   "YouTube": "Youtube",
@@ -82,6 +90,17 @@ const FOUNDATION_ICON_MAP: Record<string, string> = {
   "Netflix": "Netflix",
   "Spotify": "Spotify",
   "Discord": "Discord",
+
+  // ── Automation ───────────────────────────────────────────────────────
+  "Home Assistant": "Homeassistant",
+  "HA": "Homeassistant",
+
+  // ── Automotive ───────────────────────────────────────────────────────
+  "Teslamate": "Tesla",
+
+  // ── Cloud / Hosting ──────────────────────────────────────────────────
+  "Cloudflare": "Cloudflare",
+  "Nginx": "Nginx",
 
   // ── Other ───────────────────────────────────────────────────────────
   "N8N": "N8n",
@@ -140,6 +159,15 @@ export function fuzzyMatchIcon(title: string): IconData | null {
   const lowerTitle = title.toLowerCase();
   for (const [name] of Object.entries(FOUNDATION_ICON_MAP)) {
     if (name.toLowerCase() === lowerTitle) {
+      return getSimpleIcon(name);
+    }
+  }
+
+  // 2.5. Normalized match (strip spaces, hyphens, dots)
+  const normalize = (s: string) => s.toLowerCase().replace(/[\s\-_.]/g, "");
+  const normalizedTitle = normalize(title);
+  for (const [name] of Object.entries(FOUNDATION_ICON_MAP)) {
+    if (normalize(name) === normalizedTitle) {
       return getSimpleIcon(name);
     }
   }

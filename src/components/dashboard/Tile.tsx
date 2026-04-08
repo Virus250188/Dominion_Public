@@ -82,13 +82,11 @@ function TileContextMenu({
             <>
               <DropdownMenuSeparator />
               <div className="px-2 py-1.5 text-xs text-muted-foreground">Verschieben nach...</div>
-              {tile.groupId && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMoveToGroup(tile.id, null); }}>
-                  <FolderMinus className="mr-2 h-4 w-4" />
-                  Ungruppiert
-                </DropdownMenuItem>
-              )}
-              {groups.filter(g => g.id !== tile.groupId).map((group) => (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMoveToGroup(tile.id, null); }}>
+                <FolderMinus className="mr-2 h-4 w-4" />
+                Ungruppiert
+              </DropdownMenuItem>
+              {groups.map((group) => (
                 <DropdownMenuItem key={group.id} onClick={(e) => { e.stopPropagation(); onMoveToGroup(tile.id, group.id); }}>
                   <FolderOpen className="mr-2 h-4 w-4" />
                   {group.title}

@@ -41,8 +41,6 @@ model Tile {
   enhancedConfig String?
   appConnectionId Int?
   appConnection   AppConnection? @relation(fields: [appConnectionId], references: [id], onDelete: SetNull)
-  groupId        Int?
-  group          TileGroup?  @relation(fields: [groupId], references: [id])
   subDashboardId Int?
   subDashboard   SubDashboard? @relation("SubDashboardTiles", fields: [subDashboardId], references: [id])
   userId         Int
@@ -52,7 +50,6 @@ model Tile {
   updatedAt      DateTime    @updatedAt
 
   @@index([userId])
-  @@index([groupId])
   @@index([subDashboardId])
   @@index([appConnectionId])
 }
@@ -66,7 +63,6 @@ model TileGroup {
   collapsed      Boolean       @default(false)
   userId         Int
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tiles          Tile[]
   groupTiles     GroupTile[]
   subDashboardId Int?
   subDashboard   SubDashboard? @relation("SubDashboardGroups", fields: [subDashboardId], references: [id])
@@ -89,6 +85,7 @@ model GroupTile {
   createdAt  DateTime  @default(now())
 
   @@unique([groupId, tileId])
+  @@unique([tileId])
   @@index([groupId])
   @@index([tileId])
 }
@@ -114,10 +111,12 @@ model UserSettings {
   showSearch     Boolean @default(true)
   showClock      Boolean @default(true)
   showGreeting   Boolean @default(true)
-  aiProvider     String?
-  aiApiKey       String?
-  aiModel        String?
-  aiEndpoint     String?
+  aiProvider            String?
+  aiApiKey              String?
+  aiModel               String?
+  aiEndpoint            String?
+  dashboardWidthPercent Int     @default(70)
+  groupsWidthPercent    Int     @default(70)
 }
 
 model FoundationApp {
