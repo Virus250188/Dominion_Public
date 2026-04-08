@@ -203,7 +203,7 @@ export function TileGrid({
       <style>{`
         @media (max-width: 1023px) {
           .tile-grid-responsive {
-            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
           }
         }
         @media (max-width: 639px) {
@@ -222,7 +222,7 @@ export function TileGrid({
           visible: { transition: { staggerChildren: 0.05 } },
         }}
         style={{
-          gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(auto-fill, minmax(180px, 1fr))`,
           gridAutoRows: "160px",
           gridAutoFlow: "dense",
         }}

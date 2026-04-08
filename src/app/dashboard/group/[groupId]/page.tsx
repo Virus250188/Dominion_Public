@@ -77,7 +77,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="flex w-full flex-1 flex-col gap-6 px-6 py-8">
         <GroupDashboard
           group={{
             id: group.id,

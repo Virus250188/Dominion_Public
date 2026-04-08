@@ -97,7 +97,7 @@ export default async function DashboardPage() {
       <div className="md:hidden px-6 pt-4">
         <SearchBar providers={searchProviders} tiles={searchTiles} />
       </div>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="flex w-full flex-1 flex-col gap-6 px-6 py-8">
         <Dashboard
           initialTiles={ungroupedTiles.map((t) => ({
             id: t.id,

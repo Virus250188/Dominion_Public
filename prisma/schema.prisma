@@ -111,10 +111,12 @@ model UserSettings {
   showSearch     Boolean @default(true)
   showClock      Boolean @default(true)
   showGreeting   Boolean @default(true)
-  aiProvider     String?
-  aiApiKey       String?
-  aiModel        String?
-  aiEndpoint     String?
+  aiProvider            String?
+  aiApiKey              String?
+  aiModel               String?
+  aiEndpoint            String?
+  dashboardWidthPercent Int     @default(70)
+  groupsWidthPercent    Int     @default(70)
 }
 
 model FoundationApp {
