@@ -213,7 +213,9 @@ export function SubDashboardView({
             ...data,
             customIconSvg: data.customIconSvg ?? editingTile.customIconSvg,
           };
-          const oldGroupId = groupsWithTiles.find((g) => g.tiles.some((t) => t.id === editingTile.id))?.id ?? null;
+          // Use editingTileGroupId (set correctly in handleEdit) instead of
+          // re-deriving from groupsWithTiles which may be stale in this closure
+          const oldGroupId = editingTileGroupId;
           const newGroupId = data.groupId;
           const groupChanged = oldGroupId !== newGroupId;
 
@@ -296,65 +298,81 @@ export function SubDashboardView({
         setEditingTile(null);
       });
     },
-    [editingTile, subDashboard.id]
+    [editingTile, editingTileGroupId, subDashboard.id]
   );
 
   const handleMoveToGroup = useCallback(
     (tileId: number, groupId: number | null) => {
-      startTransition(async () => {
-        await assignTileToGroup(tileId, groupId);
-        if (groupId !== null) {
-          const tile = tiles.find((t) => t.id === tileId);
-          const groupTile = !tile
-            ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
-            : null;
-          const movingTile = tile || groupTile;
+      // Capture previous state for rollback
+      const prevTiles = tiles;
+      const prevGroupsWithTiles = groupsWithTiles;
+      const prevGroups = groups;
 
-          if (movingTile) {
-            setTiles((prev) => prev.filter((t) => t.id !== tileId));
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => {
-                if (g.id === groupId) {
-                  const alreadyIn = g.tiles.some((t) => t.id === tileId);
-                  return alreadyIn
-                    ? g
-                    : { ...g, tiles: [...g.tiles, movingTile] };
-                }
-                return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
-              })
-            );
-            setGroups((prev) => prev.map((g) => {
+      if (groupId !== null) {
+        const tile = tiles.find((t) => t.id === tileId);
+        const groupTile = !tile
+          ? groupsWithTiles.flatMap((g) => g.tiles).find((t) => t.id === tileId)
+          : null;
+        const movingTile = tile || groupTile;
+
+        if (movingTile) {
+          // Optimistic: update state immediately
+          setTiles((prev) => prev.filter((t) => t.id !== tileId));
+          setGroupsWithTiles((prev) =>
+            prev.map((g) => {
               if (g.id === groupId) {
-                const newIds = g.assignedTileIds.includes(tileId)
-                  ? g.assignedTileIds
-                  : [...g.assignedTileIds, tileId];
-                return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+                const alreadyIn = g.tiles.some((t) => t.id === tileId);
+                return alreadyIn
+                  ? g
+                  : { ...g, tiles: [...g.tiles, movingTile] };
               }
-              const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
-              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
-            }));
-          }
-        } else {
-          const groupTile = groupsWithTiles
-            .flatMap((g) => g.tiles)
-            .find((t) => t.id === tileId);
-          if (groupTile) {
-            setTiles((prev) => [...prev, groupTile]);
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({
-                ...g,
-                tiles: g.tiles.filter((t) => t.id !== tileId),
-              }))
-            );
-            setGroups((prev) => prev.map((g) => {
-              const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
-              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
-            }));
-          }
+              return { ...g, tiles: g.tiles.filter((t) => t.id !== tileId) };
+            })
+          );
+          setGroups((prev) => prev.map((g) => {
+            if (g.id === groupId) {
+              const newIds = g.assignedTileIds.includes(tileId)
+                ? g.assignedTileIds
+                : [...g.assignedTileIds, tileId];
+              return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
+            }
+            const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+            return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+          }));
+        }
+      } else {
+        const groupTile = groupsWithTiles
+          .flatMap((g) => g.tiles)
+          .find((t) => t.id === tileId);
+        if (groupTile) {
+          // Optimistic: update state immediately
+          setTiles((prev) => [...prev, groupTile]);
+          setGroupsWithTiles((prev) =>
+            prev.map((g) => ({
+              ...g,
+              tiles: g.tiles.filter((t) => t.id !== tileId),
+            }))
+          );
+          setGroups((prev) => prev.map((g) => {
+            const filteredIds = g.assignedTileIds.filter((id) => id !== tileId);
+            return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+          }));
+        }
+      }
+
+      // Persist to server (non-blocking), rollback on failure
+      startTransition(async () => {
+        try {
+          await assignTileToGroup(tileId, groupId);
+        } catch {
+          setTiles(prevTiles);
+          setGroupsWithTiles(prevGroupsWithTiles);
+          setGroups(prevGroups);
+          toast.error("Verschieben fehlgeschlagen");
         }
       });
     },
-    [tiles, groupsWithTiles]
+    [tiles, groupsWithTiles, groups]
   );
 
   const handleToggleCollapsed = useCallback(
@@ -540,27 +558,27 @@ export function SubDashboardView({
       const targetId = target.id;
       if (sourceId === targetId) return;
 
-      setGroupsWithTiles((prev) => {
-        const fromIndex = prev.findIndex((g) => g.id === sourceId);
-        const toIndex = prev.findIndex((g) => g.id === targetId);
-        if (fromIndex === -1 || toIndex === -1) return prev;
+      const fromIndex = groupsWithTiles.findIndex((g) => g.id === sourceId);
+      const toIndex = groupsWithTiles.findIndex((g) => g.id === targetId);
+      if (fromIndex === -1 || toIndex === -1) return;
 
-        const next = [...prev];
-        const [item] = next.splice(fromIndex, 1);
-        next.splice(toIndex, 0, item);
+      const reordered = [...groupsWithTiles];
+      const [moved] = reordered.splice(fromIndex, 1);
+      reordered.splice(toIndex, 0, moved);
 
-        startTransition(async () => {
-          try {
-            await reorderGroups(next.map((g) => g.id));
-          } catch {
-            toast.error("Gruppen-Reihenfolge konnte nicht gespeichert werden");
-          }
-        });
+      const previousOrder = groupsWithTiles;
+      setGroupsWithTiles(reordered);
 
-        return next;
+      startTransition(async () => {
+        try {
+          await reorderGroups(reordered.map((g) => g.id));
+        } catch {
+          setGroupsWithTiles(previousOrder);
+          toast.error("Gruppen-Reihenfolge konnte nicht gespeichert werden");
+        }
       });
     },
-    [],
+    [groupsWithTiles],
   );
 
   return (
