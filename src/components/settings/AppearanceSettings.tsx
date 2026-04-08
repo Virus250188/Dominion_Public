@@ -17,6 +17,9 @@ interface AppearanceSettingsProps {
   showClock: boolean;
   showGreeting: boolean;
   backgroundType?: string;
+  textPrimary?: string | null;
+  textSecondary?: string | null;
+  glassAccent?: string | null;
 }
 
 const backgroundOptions = [
@@ -49,10 +52,23 @@ export function AppearanceSettings({
   showClock: _showClock,
   showGreeting: _showGreeting,
   backgroundType: _backgroundType,
+  textPrimary: _textPrimary,
+  textSecondary: _textSecondary,
+  glassAccent: _glassAccent,
 }: AppearanceSettingsProps) {
-  const { theme, setTheme, background, setBackground, backgroundType, setBackgroundType } = useTheme();
+  const {
+    theme, setTheme,
+    background, setBackground,
+    backgroundType, setBackgroundType,
+    textPrimary: ctxTextPrimary, setTextPrimary,
+    textSecondary: ctxTextSecondary, setTextSecondary,
+    glassAccent: ctxGlassAccent, setGlassAccent,
+  } = useTheme();
   const [isPending, startTransition] = useTransition();
   const [gridColumns, setGridColumns] = useState(initialColumns);
+  const [localTextPrimary, setLocalTextPrimary] = useState(ctxTextPrimary || "");
+  const [localTextSecondary, setLocalTextSecondary] = useState(ctxTextSecondary || "");
+  const [localGlassAccent, setLocalGlassAccent] = useState(ctxGlassAccent || "");
 
   // Theme and background changes are persisted to DB by ThemeProvider itself,
   // so we only need to call the context setters here.
@@ -119,6 +135,112 @@ export function AppearanceSettings({
               )}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Anpassen — Color Customization */}
+      <section>
+        <Label className="text-base font-semibold mb-4 block">Anpassen</Label>
+        <div className="glass-card p-5 space-y-5">
+          <div className="flex gap-6 items-start">
+            {/* Live Preview Tile */}
+            <div
+              className="glass-card relative flex flex-col items-center justify-center gap-1.5 p-3 pt-6 w-[120px] h-[120px] flex-shrink-0"
+              style={{
+                ...(localTextPrimary ? { "--text-primary-custom": localTextPrimary } as React.CSSProperties : {}),
+                ...(localTextSecondary ? { "--text-secondary-custom": localTextSecondary } as React.CSSProperties : {}),
+                ...(localGlassAccent ? { "--glass-accent": localGlassAccent } as React.CSSProperties : {}),
+              }}
+            >
+              <div className="glass-chromatic rounded-[inherit]" />
+              <div className="glass-shine" />
+              <div className="glass-edge-glow" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg relative z-[4]"
+                style={{ backgroundColor: "#6366f1" }}
+              >
+                ⚡
+              </div>
+              <span
+                className="text-xs font-semibold text-center leading-tight relative z-[4]"
+                style={{ color: "var(--text-primary-custom, var(--foreground))" }}
+              >
+                Emby
+              </span>
+              <span
+                className="text-[10px] text-center relative z-[4]"
+                style={{ color: "var(--text-secondary-custom, var(--muted-foreground))" }}
+              >
+                Media Server
+              </span>
+            </div>
+
+            {/* Color Pickers */}
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localTextPrimary || "#f0f0f0"}
+                  onChange={(e) => {
+                    setLocalTextPrimary(e.target.value);
+                    setTextPrimary(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Primary Text</div>
+                  <div className="text-xs text-muted-foreground">Tile-Titel, Gruppen-Titel</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localTextSecondary || "#999999"}
+                  onChange={(e) => {
+                    setLocalTextSecondary(e.target.value);
+                    setTextSecondary(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Secondary Text</div>
+                  <div className="text-xs text-muted-foreground">Beschreibungen, Stats-Labels</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localGlassAccent || "#6366f1"}
+                  onChange={(e) => {
+                    setLocalGlassAccent(e.target.value);
+                    setGlassAccent(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Glass Akzent</div>
+                  <div className="text-xs text-muted-foreground">Chromatische Kanten, Glow-Effekte</div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setLocalTextPrimary("");
+                  setLocalTextSecondary("");
+                  setLocalGlassAccent("");
+                  setTextPrimary(null);
+                  setTextSecondary(null);
+                  setGlassAccent(null);
+                }}
+              >
+                Zuruecksetzen
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
