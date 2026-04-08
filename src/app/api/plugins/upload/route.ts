@@ -245,6 +245,17 @@ export async function DELETE(request: NextRequest) {
       pluginId,
     );
 
+    // Security: verify targetDir is within the expected base directory (defense in depth)
+    const communityBase = path.resolve(process.cwd(), "src", "plugins", "community");
+    const resolvedTarget = path.resolve(targetDir);
+    if (!resolvedTarget.startsWith(communityBase + path.sep) && resolvedTarget !== communityBase) {
+      logger.warn("plugin-delete", `Path injection attempt: ${pluginId} resolved to ${resolvedTarget}`);
+      return NextResponse.json(
+        { error: "Ungueltiger Plugin-Pfad." },
+        { status: 400 },
+      );
+    }
+
     if (!fs.existsSync(targetDir)) {
       return NextResponse.json(
         { error: `Plugin "${pluginId}" nicht gefunden.` },
