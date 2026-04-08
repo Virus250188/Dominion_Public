@@ -46,8 +46,11 @@ export default async function RootLayout({
   // Fetch persisted appearance settings from DB for authenticated users
   let dbTheme: Theme = "glass-dark";
   let dbBackground: string | null = null;
-  let dbBackgroundType: string = "gradient";
+  let dbBackgroundType: string = "plasma";
   let dbSettingsLoaded = false;
+  let dbTextPrimary: string | null = null;
+  let dbTextSecondary: string | null = null;
+  let dbGlassAccent: string | null = null;
 
   try {
     const session = await auth();
@@ -58,7 +61,10 @@ export default async function RootLayout({
         if (settings) {
           dbTheme = (settings.theme as Theme) || "glass-dark";
           dbBackground = settings.background ?? null;
-          dbBackgroundType = settings.backgroundType || "gradient";
+          dbBackgroundType = settings.backgroundType || "plasma";
+          dbTextPrimary = settings.textPrimary ?? null;
+          dbTextSecondary = settings.textSecondary ?? null;
+          dbGlassAccent = settings.glassAccent ?? null;
           dbSettingsLoaded = true;
         }
       }
@@ -89,6 +95,9 @@ export default async function RootLayout({
           defaultBackground={dbBackground}
           defaultBackgroundType={dbBackgroundType}
           dbSettingsLoaded={dbSettingsLoaded}
+          defaultTextPrimary={dbTextPrimary}
+          defaultTextSecondary={dbTextSecondary}
+          defaultGlassAccent={dbGlassAccent}
         >
           <EditModeProvider>
             <NotificationPanelProvider>
