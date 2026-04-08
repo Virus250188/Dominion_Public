@@ -13,7 +13,6 @@ export interface TileData {
   enhancedType: string | null;
   enhancedConfig: string | null;
   customIconSvg: string | null;
-  groupId: number | null;
   appConnectionId: number | null;
 }
 
