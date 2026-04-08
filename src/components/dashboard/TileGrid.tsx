@@ -201,11 +201,6 @@ export function TileGrid({
     <DragDropProvider onDragEnd={editMode ? handleDragEnd : undefined}>
       {/* Responsive overrides for the tile grid */}
       <style>{`
-        @media (max-width: 1023px) {
-          .tile-grid-responsive {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-          }
-        }
         @media (max-width: 639px) {
           .tile-grid-responsive {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;

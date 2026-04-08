@@ -63,25 +63,31 @@ export function ResizableContainer({
   );
 
   return (
-    <div
-      ref={containerRef}
-      className={cn("relative", className)}
-      style={{ width: `${widthPercent}%` }}
-    >
-      {children}
+    <>
+      <style>{`
+        @media (min-width: 1280px) {
+          .resizable-dashboard { width: ${widthPercent}%; }
+        }
+      `}</style>
+      <div
+        ref={containerRef}
+        className={cn("relative w-full resizable-dashboard", className)}
+      >
+        {children}
 
-      {/* Resize handle — only visible in edit mode */}
-      {editMode && (
-        <div
-          onMouseDown={handleMouseDown}
-          className={cn(
-            "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10",
-            "transition-colors hover:bg-primary/30",
-            isDragging ? "bg-primary/50" : "bg-border/30"
-          )}
-          title="Breite anpassen"
-        />
-      )}
-    </div>
+        {/* Resize handle — only visible in edit mode */}
+        {editMode && (
+          <div
+            onMouseDown={handleMouseDown}
+            className={cn(
+              "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10",
+              "transition-colors hover:bg-primary/30",
+              isDragging ? "bg-primary/50" : "bg-border/30"
+            )}
+            title="Breite anpassen"
+          />
+        )}
+      </div>
+    </>
   );
 }

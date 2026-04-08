@@ -217,11 +217,6 @@ export function GroupContainer({
                 <>
                   {/* Responsive overrides for group sub-grid */}
                   <style>{`
-                    @media (max-width: 1023px) {
-                      .group-grid-${group.id} {
-                        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-                      }
-                    }
                     @media (max-width: 639px) {
                       .group-grid-${group.id} {
                         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
