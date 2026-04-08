@@ -54,7 +54,7 @@ export function GroupContainer({
   const { editMode } = useEditMode();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { ref, isDragging } = useSortable({
+  const { ref, handleRef, isDragging } = useSortable({
     id: group.id,
     index,
     group: "groups",
@@ -90,8 +90,15 @@ export function GroupContainer({
           "hover:bg-white/[0.04]"
         )}
       >
-        {/* Drag handle */}
-        <GripVertical className={cn("h-4 w-4 flex-shrink-0 cursor-grab", editMode ? "text-muted-foreground/70" : "text-muted-foreground/40")} />
+        {/* Drag handle — uses handleRef so only this element initiates drag */}
+        <div
+          ref={handleRef}
+          onPointerDown={(e) => { if (editMode) e.stopPropagation(); }}
+          onClick={(e) => { if (editMode) e.stopPropagation(); }}
+          className={cn("flex-shrink-0 touch-none", editMode ? "cursor-grab" : "cursor-default")}
+        >
+          <GripVertical className={cn("h-4 w-4", editMode ? "text-muted-foreground/70" : "text-muted-foreground/40")} />
+        </div>
 
         {/* Group icon with color tint */}
         <div
