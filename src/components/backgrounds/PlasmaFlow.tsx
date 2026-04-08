@@ -31,10 +31,10 @@ function PlasmaFlowInner({ className }: { className?: string }) {
     }
 
     function plasma(x: number, y: number, t: number): number {
-      let v = Math.sin(x * 0.015 + t);
-      v += Math.sin(y * 0.012 + t * 0.6);
-      v += Math.sin((x + y) * 0.008 + t * 0.4);
-      v += Math.sin(Math.sqrt(x * x + y * y) * 0.01 - t * 0.5);
+      let v = Math.sin(x * 0.008 + t);
+      v += Math.sin(y * 0.006 + t * 0.4);
+      v += Math.sin((x + y) * 0.005 + t * 0.3);
+      v += Math.sin(Math.sqrt(x * x + y * y) * 0.006 - t * 0.3);
       return v / 4;
     }
 
@@ -44,7 +44,7 @@ function PlasmaFlowInner({ className }: { className?: string }) {
       if (elapsed < FPS_INTERVAL) return;
       lastFrameTime.current = timestamp - (elapsed % FPS_INTERVAL);
 
-      timeRef.current += 0.008;
+      timeRef.current += 0.004; // Much slower, calmer pace
       const t = timeRef.current;
       const imgData = ctx!.createImageData(w, h);
       const step = 4;
@@ -52,9 +52,10 @@ function PlasmaFlowInner({ className }: { className?: string }) {
       for (let y = 0; y < h; y += step) {
         for (let x = 0; x < w; x += step) {
           const v = plasma(x, y, t);
-          const r = Math.floor(128 + 100 * Math.sin(v * Math.PI));
-          const g = Math.floor(40 + 60 * Math.sin(v * Math.PI + 2.1));
-          const b = Math.floor(160 + 90 * Math.sin(v * Math.PI + 4.2));
+          // Darker, muted tones — deep purple/blue, not psychedelic
+          const r = Math.floor(25 + 40 * Math.sin(v * Math.PI + 0.5));
+          const g = Math.floor(15 + 25 * Math.sin(v * Math.PI + 2.5));
+          const b = Math.floor(50 + 50 * Math.sin(v * Math.PI + 4.0));
           for (let dy = 0; dy < step && y + dy < h; dy++) {
             for (let dx = 0; dx < step && x + dx < w; dx++) {
               const i = ((y + dy) * w + (x + dx)) * 4;

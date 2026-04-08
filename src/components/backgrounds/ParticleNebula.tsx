@@ -68,14 +68,16 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       timeRef.current++;
       const t = timeRef.current;
 
-      ctx!.fillStyle = "rgba(10, 10, 24, 0.15)";
+      // Full clear — no trail/shadow effect
+      ctx!.fillStyle = "rgb(10, 10, 24)";
       ctx!.fillRect(0, 0, w, h);
       ctx!.globalCompositeOperation = "lighter";
 
+      // Subtle nebula clouds
       const cx1 = w * 0.3 + Math.sin(t * 0.003) * 40;
       const cy1 = h * 0.4 + Math.cos(t * 0.004) * 30;
       const g1 = ctx!.createRadialGradient(cx1, cy1, 0, cx1, cy1, 200);
-      g1.addColorStop(0, "rgba(99,102,241,0.03)");
+      g1.addColorStop(0, "rgba(99,102,241,0.025)");
       g1.addColorStop(1, "rgba(99,102,241,0)");
       ctx!.fillStyle = g1;
       ctx!.fillRect(0, 0, w, h);
@@ -83,7 +85,7 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       const cx2 = w * 0.7 + Math.cos(t * 0.003) * 35;
       const cy2 = h * 0.6 + Math.sin(t * 0.005) * 25;
       const g2 = ctx!.createRadialGradient(cx2, cy2, 0, cx2, cy2, 180);
-      g2.addColorStop(0, "rgba(236,72,153,0.025)");
+      g2.addColorStop(0, "rgba(236,72,153,0.02)");
       g2.addColorStop(1, "rgba(236,72,153,0)");
       ctx!.fillStyle = g2;
       ctx!.fillRect(0, 0, w, h);
@@ -98,18 +100,24 @@ function ParticleNebulaInner({ className }: { className?: string }) {
         if (p.y < -10) p.y = h + 10;
         if (p.y > h + 10) p.y = -10;
 
-        const a = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
-        const glowR = p.r * 6;
+        // Individual color pulsing — each particle shifts hue slightly
+        const a = p.alpha * (0.5 + 0.5 * Math.sin(p.pulse));
+        const hueShift = Math.sin(p.pulse * 0.7) * 30;
+        const pr = Math.min(255, Math.max(0, p.color[0] + hueShift));
+        const pg = Math.min(255, Math.max(0, p.color[1] + hueShift * 0.5));
+        const pb = Math.min(255, Math.max(0, p.color[2] - hueShift * 0.3));
+
+        const glowR = p.r * 8;
         const glow = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-        glow.addColorStop(0, `rgba(${p.color.join(",")}, ${a * 0.4})`);
-        glow.addColorStop(0.4, `rgba(${p.color.join(",")}, ${a * 0.1})`);
-        glow.addColorStop(1, `rgba(${p.color.join(",")}, 0)`);
+        glow.addColorStop(0, `rgba(${pr},${pg},${pb}, ${a * 0.5})`);
+        glow.addColorStop(0.3, `rgba(${pr},${pg},${pb}, ${a * 0.15})`);
+        glow.addColorStop(1, `rgba(${pr},${pg},${pb}, 0)`);
         ctx!.fillStyle = glow;
         ctx!.fillRect(p.x - glowR, p.y - glowR, glowR * 2, glowR * 2);
 
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx!.fillStyle = `rgba(${p.color.join(",")}, ${a})`;
+        ctx!.fillStyle = `rgba(${pr},${pg},${pb}, ${a})`;
         ctx!.fill();
       }
 

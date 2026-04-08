@@ -31,10 +31,28 @@ const BG_TYPE_STORAGE_KEY = "dominion-background-type";
  * Errors are silently caught - DB persistence is best-effort,
  * localStorage is the immediate store for UI responsiveness.
  */
-function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string; textPrimary?: string | null; textSecondary?: string | null; glassAccent?: string | null }) {
-  updateUserSettings(undefined, data).catch(() => {
-    // Silently ignore - user may not be authenticated (login page)
-  });
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingData: Record<string, unknown> = {};
+
+function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string; textPrimary?: string | null; textSecondary?: string | null; glassAccent?: string | null }, immediate = false) {
+  // Merge with any pending data
+  pendingData = { ...pendingData, ...data };
+
+  if (immediate) {
+    if (persistTimer) clearTimeout(persistTimer);
+    const toSend = { ...pendingData };
+    pendingData = {};
+    updateUserSettings(undefined, toSend).catch(() => {});
+    return;
+  }
+
+  // Debounce: wait 500ms before persisting (avoids compile loop on color picker drag)
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    const toSend = { ...pendingData };
+    pendingData = {};
+    updateUserSettings(undefined, toSend).catch(() => {});
+  }, 500);
 }
 
 export function ThemeProvider({
@@ -110,7 +128,7 @@ export function ThemeProvider({
     // Apply immediately, don't wait for re-render
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    persistToDb({ theme: newTheme });
+    persistToDb({ theme: newTheme }, true);
   }, []);
 
   // Apply backgroundType classes to body
@@ -160,20 +178,20 @@ export function ThemeProvider({
       setBackgroundTypeState("wallpaper");
       localStorage.setItem(BG_STORAGE_KEY, bg);
       localStorage.setItem(BG_TYPE_STORAGE_KEY, "wallpaper");
-      persistToDb({ background: bg, backgroundType: "wallpaper" });
+      persistToDb({ background: bg, backgroundType: "wallpaper" }, true);
     } else {
       // Wallpaper removed - revert to plasma
       setBackgroundTypeState("plasma");
       localStorage.removeItem(BG_STORAGE_KEY);
       localStorage.setItem(BG_TYPE_STORAGE_KEY, "plasma");
-      persistToDb({ background: null, backgroundType: "plasma" });
+      persistToDb({ background: null, backgroundType: "plasma" }, true);
     }
   }, []);
 
   const setBackgroundType = useCallback((type: string) => {
     setBackgroundTypeState(type);
     localStorage.setItem(BG_TYPE_STORAGE_KEY, type);
-    persistToDb({ backgroundType: type });
+    persistToDb({ backgroundType: type }, true);
   }, []);
 
   const setTextPrimary = useCallback((color: string | null) => {
