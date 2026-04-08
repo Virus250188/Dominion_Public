@@ -7,7 +7,10 @@ import { revalidatePath } from "next/cache";
 export async function createGroup(data: { title: string; icon?: string; color?: string; subDashboardId?: number | null }) {
   const userId = await requireUserId();
 
-  const maxOrder = await prisma.tileGroup.aggregate({ _max: { order: true }, where: { userId } });
+  const maxOrder = await prisma.tileGroup.aggregate({
+    _max: { order: true },
+    where: { userId, subDashboardId: data.subDashboardId ?? null },
+  });
   const group = await prisma.tileGroup.create({
     data: {
       title: data.title,

@@ -72,20 +72,22 @@ export async function deleteSubDashboard(id: number) {
     throw new Error("Sub-Dashboard not found or access denied");
   }
 
-  // Unlink tiles: move them back to main dashboard (set subDashboardId to null)
-  await prisma.tile.updateMany({
-    where: { subDashboardId: id },
-    data: { subDashboardId: null },
-  });
+  await prisma.$transaction(async (tx) => {
+    // Unlink tiles: move them back to main dashboard (set subDashboardId to null)
+    await tx.tile.updateMany({
+      where: { subDashboardId: id },
+      data: { subDashboardId: null },
+    });
 
-  // Unlink groups: move them back to main dashboard
-  await prisma.tileGroup.updateMany({
-    where: { subDashboardId: id },
-    data: { subDashboardId: null },
-  });
+    // Unlink groups: move them back to main dashboard
+    await tx.tileGroup.updateMany({
+      where: { subDashboardId: id },
+      data: { subDashboardId: null },
+    });
 
-  // Delete the sub-dashboard
-  await prisma.subDashboard.delete({ where: { id } });
+    // Delete the sub-dashboard
+    await tx.subDashboard.delete({ where: { id } });
+  });
 
   revalidatePath("/");
 }
@@ -134,19 +136,21 @@ export async function assignTilesToSubDashboard(
     throw new Error("Sub-Dashboard not found or access denied");
   }
 
-  // Remove all current tile assignments for this sub-dashboard
-  await prisma.tile.updateMany({
-    where: { subDashboardId },
-    data: { subDashboardId: null },
-  });
-
-  // Assign the new set of tiles
-  if (tileIds.length > 0) {
-    await prisma.tile.updateMany({
-      where: { id: { in: tileIds }, userId },
-      data: { subDashboardId },
+  await prisma.$transaction(async (tx) => {
+    // Remove all current tile assignments for this sub-dashboard
+    await tx.tile.updateMany({
+      where: { subDashboardId },
+      data: { subDashboardId: null },
     });
-  }
+
+    // Assign the new set of tiles
+    if (tileIds.length > 0) {
+      await tx.tile.updateMany({
+        where: { id: { in: tileIds }, userId },
+        data: { subDashboardId },
+      });
+    }
+  });
 
   revalidatePath("/");
 }
