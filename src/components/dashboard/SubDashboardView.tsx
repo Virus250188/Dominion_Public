@@ -143,48 +143,74 @@ export function SubDashboardView({
   const executeDeleteTile = useCallback(
     (id: number) => {
       startTransition(async () => {
-        await deleteTile(id);
-        setTiles((prev) => prev.filter((t) => t.id !== id));
-        setGroupsWithTiles((prev) =>
-          prev.map((g) => ({
-            ...g,
-            tiles: g.tiles.filter((t) => t.id !== id),
-          }))
-        );
+        try {
+          await deleteTile(id);
+          setTiles((prev) => prev.filter((t) => t.id !== id));
+          setGroupsWithTiles((prev) =>
+            prev.map((g) => ({
+              ...g,
+              tiles: g.tiles.filter((t) => t.id !== id),
+            }))
+          );
+          toast.success("App geloescht");
+        } catch {
+          toast.error("Loeschen fehlgeschlagen");
+        }
       });
     },
     []
   );
 
   const handleTogglePin = useCallback((id: number, pinned: boolean) => {
+    // Capture previous state for rollback
+    const previousTiles = tiles;
+    const previousGroupsWithTiles = groupsWithTiles;
+
+    // Optimistic update
+    setTiles((prev) =>
+      prev
+        .map((t) => (t.id === id ? { ...t, pinned } : t))
+        .sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          return a.order - b.order;
+        })
+    );
+    setGroupsWithTiles((prev) =>
+      prev.map((g) => ({
+        ...g,
+        tiles: g.tiles.map((t) => (t.id === id ? { ...t, pinned } : t)),
+      }))
+    );
+
     startTransition(async () => {
-      await togglePinTile(id, pinned);
-      setTiles((prev) =>
-        prev
-          .map((t) => (t.id === id ? { ...t, pinned } : t))
-          .sort((a, b) => {
-            if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-            return a.order - b.order;
-          })
-      );
-      setGroupsWithTiles((prev) =>
-        prev.map((g) => ({
-          ...g,
-          tiles: g.tiles.map((t) => (t.id === id ? { ...t, pinned } : t)),
-        }))
-      );
+      try {
+        await togglePinTile(id, pinned);
+      } catch {
+        // Rollback on failure
+        setTiles(previousTiles);
+        setGroupsWithTiles(previousGroupsWithTiles);
+        toast.error("Pin-Status konnte nicht geaendert werden");
+      }
     });
-  }, []);
+  }, [tiles, groupsWithTiles]);
 
   const handleReorder = useCallback(
     (orderedIds: number[]) => {
+      // Capture previous state for rollback
+      const previousTiles = tiles;
+
       const reordered = orderedIds
         .map((id) => tiles.find((t) => t.id === id))
         .filter(Boolean) as TileData[];
       setTiles(reordered);
 
       startTransition(async () => {
-        await reorderTiles(orderedIds);
+        try {
+          await reorderTiles(orderedIds);
+        } catch {
+          setTiles(previousTiles);
+          toast.error("Reihenfolge konnte nicht gespeichert werden");
+        }
       });
     },
     [tiles]
@@ -206,96 +232,102 @@ export function SubDashboardView({
       customIconSvg?: string | null;
     }) => {
       startTransition(async () => {
-        if (editingTile) {
-          await updateTile(editingTile.id, data);
-          const updatedTile = {
-            ...editingTile,
-            ...data,
-            customIconSvg: data.customIconSvg ?? editingTile.customIconSvg,
-          };
-          // Use editingTileGroupId (set correctly in handleEdit) instead of
-          // re-deriving from groupsWithTiles which may be stale in this closure
-          const oldGroupId = editingTileGroupId;
-          const newGroupId = data.groupId;
-          const groupChanged = oldGroupId !== newGroupId;
+        try {
+          if (editingTile) {
+            await updateTile(editingTile.id, data);
+            const updatedTile = {
+              ...editingTile,
+              ...data,
+              customIconSvg: data.customIconSvg ?? editingTile.customIconSvg,
+            };
+            // Use editingTileGroupId (set correctly in handleEdit) instead of
+            // re-deriving from groupsWithTiles which may be stale in this closure
+            const oldGroupId = editingTileGroupId;
+            const newGroupId = data.groupId;
+            const groupChanged = oldGroupId !== newGroupId;
 
-          if (groupChanged && newGroupId !== null) {
-            // Moving to a group: remove from ungrouped, add to target group
-            await assignTileToGroup(editingTile.id, newGroupId);
-            setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => {
+            if (groupChanged && newGroupId !== null) {
+              // Moving to a group: remove from ungrouped, add to target group
+              await assignTileToGroup(editingTile.id, newGroupId);
+              setTiles((prev) => prev.filter((t) => t.id !== editingTile.id));
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => {
+                  if (g.id === newGroupId) {
+                    const alreadyIn = g.tiles.some((t) => t.id === editingTile.id);
+                    return alreadyIn
+                      ? { ...g, tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)) }
+                      : { ...g, tiles: [...g.tiles, updatedTile] };
+                  }
+                  return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
+                })
+              );
+              setGroups((prev) => prev.map((g) => {
                 if (g.id === newGroupId) {
-                  const alreadyIn = g.tiles.some((t) => t.id === editingTile.id);
-                  return alreadyIn
-                    ? { ...g, tiles: g.tiles.map((t) => (t.id === editingTile.id ? updatedTile : t)) }
-                    : { ...g, tiles: [...g.tiles, updatedTile] };
+                  const newIds = g.assignedTileIds.includes(editingTile.id)
+                    ? g.assignedTileIds
+                    : [...g.assignedTileIds, editingTile.id];
+                  return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
                 }
-                return { ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) };
-              })
-            );
-            setGroups((prev) => prev.map((g) => {
-              if (g.id === newGroupId) {
-                const newIds = g.assignedTileIds.includes(editingTile.id)
-                  ? g.assignedTileIds
-                  : [...g.assignedTileIds, editingTile.id];
-                return { ...g, assignedTileIds: newIds, tileCount: newIds.length };
-              }
-              const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
-              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
-            }));
-          } else if (groupChanged && newGroupId === null) {
-            // Moving out of group: remove from groups, add to ungrouped
-            await assignTileToGroup(editingTile.id, null);
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
-            );
-            setTiles((prev) => [...prev, updatedTile]);
-            setGroups((prev) => prev.map((g) => {
-              const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
-              return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
-            }));
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
+            } else if (groupChanged && newGroupId === null) {
+              // Moving out of group: remove from groups, add to ungrouped
+              await assignTileToGroup(editingTile.id, null);
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => ({ ...g, tiles: g.tiles.filter((t) => t.id !== editingTile.id) }))
+              );
+              setTiles((prev) => [...prev, updatedTile]);
+              setGroups((prev) => prev.map((g) => {
+                const filteredIds = g.assignedTileIds.filter((id) => id !== editingTile.id);
+                return { ...g, assignedTileIds: filteredIds, tileCount: filteredIds.length };
+              }));
+            } else {
+              // Same group — just update in place
+              setTiles((prev) =>
+                prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
+              );
+              setGroupsWithTiles((prev) =>
+                prev.map((g) => ({
+                  ...g,
+                  tiles: g.tiles.map((t) =>
+                    t.id === editingTile.id ? updatedTile : t
+                  ),
+                }))
+              );
+            }
+            toast.success("Aenderungen gespeichert");
           } else {
-            // Same group — just update in place
-            setTiles((prev) =>
-              prev.map((t) => (t.id === editingTile.id ? updatedTile : t))
-            );
-            setGroupsWithTiles((prev) =>
-              prev.map((g) => ({
-                ...g,
-                tiles: g.tiles.map((t) =>
-                  t.id === editingTile.id ? updatedTile : t
-                ),
-              }))
-            );
+            // Create tile and assign to this sub-dashboard
+            const created = await createTile({
+              ...data,
+              subDashboardId: subDashboard.id,
+            });
+            const newTile: TileData = {
+              id: created.id,
+              title: created.title,
+              url: created.url,
+              color: created.color,
+              icon: created.icon,
+              description: created.description,
+              pinned: created.pinned,
+              order: created.order,
+              columnSpan: created.columnSpan,
+              rowSpan: created.rowSpan,
+              type: created.type as "standard" | "enhanced",
+              enhancedType: created.enhancedType,
+              enhancedConfig: created.enhancedConfig,
+              customIconSvg: created.customIconSvg,
+              appConnectionId: created.appConnectionId ?? null,
+            };
+            setTiles((prev) => [...prev, newTile]);
+            toast.success("App hinzugefuegt");
           }
-        } else {
-          // Create tile and assign to this sub-dashboard
-          const created = await createTile({
-            ...data,
-            subDashboardId: subDashboard.id,
-          });
-          const newTile: TileData = {
-            id: created.id,
-            title: created.title,
-            url: created.url,
-            color: created.color,
-            icon: created.icon,
-            description: created.description,
-            pinned: created.pinned,
-            order: created.order,
-            columnSpan: created.columnSpan,
-            rowSpan: created.rowSpan,
-            type: created.type as "standard" | "enhanced",
-            enhancedType: created.enhancedType,
-            enhancedConfig: created.enhancedConfig,
-            customIconSvg: created.customIconSvg,
-            appConnectionId: created.appConnectionId ?? null,
-          };
-          setTiles((prev) => [...prev, newTile]);
+          setDialogOpen(false);
+          setEditingTile(null);
+        } catch {
+          toast.error(editingTile ? "Speichern fehlgeschlagen" : "App konnte nicht erstellt werden");
         }
-        setDialogOpen(false);
-        setEditingTile(null);
       });
     },
     [editingTile, editingTileGroupId, subDashboard.id]
@@ -423,20 +455,33 @@ export function SubDashboardView({
 
   const executeDeleteGroup = useCallback(
     (id: number) => {
+      // Capture previous state for rollback
+      const previousTiles = tiles;
+      const previousGroups = groups;
+      const previousGroupsWithTiles = groupsWithTiles;
+
       startTransition(async () => {
-        await deleteGroupAction(id);
-        const deletedGroup = groupsWithTiles.find((g) => g.id === id);
-        if (deletedGroup) {
-          setTiles((prev) => [
-            ...prev,
-            ...deletedGroup.tiles,
-          ]);
+        try {
+          await deleteGroupAction(id);
+          const deletedGroup = groupsWithTiles.find((g) => g.id === id);
+          if (deletedGroup) {
+            setTiles((prev) => [
+              ...prev,
+              ...deletedGroup.tiles,
+            ]);
+          }
+          setGroups((prev) => prev.filter((g) => g.id !== id));
+          setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
+          toast.success("Gruppe geloescht");
+        } catch {
+          setTiles(previousTiles);
+          setGroups(previousGroups);
+          setGroupsWithTiles(previousGroupsWithTiles);
+          toast.error("Loeschen fehlgeschlagen");
         }
-        setGroups((prev) => prev.filter((g) => g.id !== id));
-        setGroupsWithTiles((prev) => prev.filter((g) => g.id !== id));
       });
     },
-    [groupsWithTiles]
+    [tiles, groups, groupsWithTiles]
   );
 
   const handleSaveGroup = useCallback(
@@ -447,86 +492,92 @@ export function SubDashboardView({
       selectedTileIds: number[];
     }) => {
       startTransition(async () => {
-        if (editingGroup) {
-          await updateGroup(editingGroup.id, {
-            title: data.title,
-            icon: data.icon,
-            color: data.color,
-          });
-          await assignTilesToGroup(editingGroup.id, data.selectedTileIds);
-          setGroups((prev) =>
-            prev.map((g) =>
-              g.id === editingGroup.id
-                ? {
-                    ...g,
-                    title: data.title,
-                    icon: data.icon,
-                    color: data.color,
-                    tileCount: data.selectedTileIds.length,
-                    assignedTileIds: data.selectedTileIds,
-                  }
-                : g
-            )
-          );
-          setGroupsWithTiles((prev) =>
-            prev.map((g) => {
-              if (g.id !== editingGroup.id) return g;
-              const allTiles = [...tiles, ...prev.flatMap((grp) => grp.tiles)];
-              const uniqueTiles = new Map(allTiles.map((t) => [t.id, t]));
-              const newGroupTiles = data.selectedTileIds
-                .map((id) => uniqueTiles.get(id))
-                .filter(Boolean) as TileData[];
-              return {
-                ...g,
-                title: data.title,
-                icon: data.icon,
-                color: data.color,
+        try {
+          if (editingGroup) {
+            await updateGroup(editingGroup.id, {
+              title: data.title,
+              icon: data.icon,
+              color: data.color,
+            });
+            await assignTilesToGroup(editingGroup.id, data.selectedTileIds);
+            setGroups((prev) =>
+              prev.map((g) =>
+                g.id === editingGroup.id
+                  ? {
+                      ...g,
+                      title: data.title,
+                      icon: data.icon,
+                      color: data.color,
+                      tileCount: data.selectedTileIds.length,
+                      assignedTileIds: data.selectedTileIds,
+                    }
+                  : g
+              )
+            );
+            setGroupsWithTiles((prev) =>
+              prev.map((g) => {
+                if (g.id !== editingGroup.id) return g;
+                const allTiles = [...tiles, ...prev.flatMap((grp) => grp.tiles)];
+                const uniqueTiles = new Map(allTiles.map((t) => [t.id, t]));
+                const newGroupTiles = data.selectedTileIds
+                  .map((id) => uniqueTiles.get(id))
+                  .filter(Boolean) as TileData[];
+                return {
+                  ...g,
+                  title: data.title,
+                  icon: data.icon,
+                  color: data.color,
+                  tiles: newGroupTiles,
+                };
+              })
+            );
+            const assignedSet = new Set(data.selectedTileIds);
+            setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+            toast.success("Gruppe aktualisiert");
+          } else {
+            const created = await createGroup({
+              title: data.title,
+              icon: data.icon,
+              color: data.color,
+              subDashboardId: subDashboard.id,
+            });
+            if (data.selectedTileIds.length > 0) {
+              await assignTilesToGroup(created.id, data.selectedTileIds);
+            }
+            setGroups((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                title: created.title,
+                icon: created.icon,
+                color: created.color,
+                order: created.order,
+                tileCount: data.selectedTileIds.length,
+                assignedTileIds: data.selectedTileIds,
+              },
+            ]);
+            const assignedSet = new Set(data.selectedTileIds);
+            const newGroupTiles = tiles.filter((t) => assignedSet.has(t.id));
+            setGroupsWithTiles((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                title: created.title,
+                icon: created.icon,
+                color: created.color,
+                order: created.order,
+                collapsed: false,
                 tiles: newGroupTiles,
-              };
-            })
-          );
-          const assignedSet = new Set(data.selectedTileIds);
-          setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
-        } else {
-          const created = await createGroup({
-            title: data.title,
-            icon: data.icon,
-            color: data.color,
-            subDashboardId: subDashboard.id,
-          });
-          if (data.selectedTileIds.length > 0) {
-            await assignTilesToGroup(created.id, data.selectedTileIds);
+              },
+            ]);
+            setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+            toast.success("Gruppe erstellt");
           }
-          setGroups((prev) => [
-            ...prev,
-            {
-              id: created.id,
-              title: created.title,
-              icon: created.icon,
-              color: created.color,
-              order: created.order,
-              tileCount: data.selectedTileIds.length,
-              assignedTileIds: data.selectedTileIds,
-            },
-          ]);
-          const assignedSet = new Set(data.selectedTileIds);
-          const newGroupTiles = tiles.filter((t) => assignedSet.has(t.id));
-          setGroupsWithTiles((prev) => [
-            ...prev,
-            {
-              id: created.id,
-              title: created.title,
-              icon: created.icon,
-              color: created.color,
-              order: created.order,
-              collapsed: false,
-              tiles: newGroupTiles,
-            },
-          ]);
-          setTiles((prev) => prev.filter((t) => !assignedSet.has(t.id)));
+          setGroupDialogOpen(false);
+          setEditingGroup(null);
+        } catch {
+          toast.error(editingGroup ? "Aktualisierung fehlgeschlagen" : "Gruppe konnte nicht erstellt werden");
         }
-        setGroupDialogOpen(false);
-        setEditingGroup(null);
       });
     },
     [editingGroup, tiles]
@@ -545,13 +596,22 @@ export function SubDashboardView({
       color: string;
       description: string;
     }) => {
+      // Capture previous state for rollback
+      const previousSubDashboard = subDashboard;
+
       startTransition(async () => {
-        await updateSubDashboard(subDashboard.id, data);
-        setSubDashboard((prev) => ({ ...prev, ...data }));
-        setSubDialogOpen(false);
+        try {
+          await updateSubDashboard(subDashboard.id, data);
+          setSubDashboard((prev) => ({ ...prev, ...data }));
+          setSubDialogOpen(false);
+          toast.success("Sub-Dashboard aktualisiert");
+        } catch {
+          setSubDashboard(previousSubDashboard);
+          toast.error("Aktualisierung fehlgeschlagen");
+        }
       });
     },
-    [subDashboard.id]
+    [subDashboard]
   );
 
   // Build GroupData for TileDialog
