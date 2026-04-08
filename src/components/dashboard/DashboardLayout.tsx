@@ -18,6 +18,12 @@ export function DashboardLayout({
   const [widthPercent, setWidthPercent] = useState(initialWidthPercent);
   const { collapsed, toggle } = useNotificationPanel();
 
+  // When panel is collapsed, use a separate width state (defaults to 100%)
+  const [collapsedWidthPercent, setCollapsedWidthPercent] = useState(100);
+
+  // Left margin for non-collapsed mode (not persisted, resets to 0)
+  const [marginLeftPercent, setMarginLeftPercent] = useState(0);
+
   const handleWidthChange = useCallback((percent: number) => {
     setWidthPercent(percent);
   }, []);
@@ -26,13 +32,34 @@ export function DashboardLayout({
     updateUserSettings(undefined, { dashboardWidthPercent: percent });
   }, []);
 
+  const handleCollapsedWidthChange = useCallback((percent: number) => {
+    setCollapsedWidthPercent(percent);
+  }, []);
+
+  const handleMarginLeftChange = useCallback((percent: number) => {
+    setMarginLeftPercent(percent);
+  }, []);
+
+  // Determine effective props based on panel state
+  const panelCollapsed = collapsed;
+  const effectiveWidth = panelCollapsed ? collapsedWidthPercent : widthPercent;
+  const effectiveOnWidthChange = panelCollapsed ? handleCollapsedWidthChange : handleWidthChange;
+  const effectiveOnResizeEnd = panelCollapsed ? undefined : handleResizeEnd;
+
   return (
     <main className="flex w-full flex-1 gap-6 px-6 py-8">
       <ResizableContainer
-        widthPercent={widthPercent}
-        onWidthChange={handleWidthChange}
-        onResizeEnd={handleResizeEnd}
+        widthPercent={effectiveWidth}
+        onWidthChange={effectiveOnWidthChange}
+        onResizeEnd={effectiveOnResizeEnd}
         className="flex flex-col gap-6 min-w-0"
+        showLeftHandle={true}
+        showRightHandle={true}
+        symmetricMode={panelCollapsed}
+        marginLeftPercent={panelCollapsed ? 0 : marginLeftPercent}
+        onMarginLeftChange={panelCollapsed ? undefined : handleMarginLeftChange}
+        minPercent={panelCollapsed ? 40 : 40}
+        maxPercent={panelCollapsed ? 100 : 95}
       >
         {children}
       </ResizableContainer>
