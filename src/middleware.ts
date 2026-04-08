@@ -53,9 +53,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const secret = process.env.AUTH_SECRET || "dominion-dev-secret-change-in-production";
-  if (!process.env.AUTH_SECRET) {
-    console.warn("[middleware] WARNING: AUTH_SECRET is not set! Authentication is insecure. Set AUTH_SECRET in .env.");
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
   }
 
   const token = await getToken({ req, secret });

@@ -15,7 +15,9 @@ interface OAuthState {
 
 /** Get the signing secret (same fallback logic as auth/crypto) */
 function getSigningSecret(): string {
-  return process.env.AUTH_SECRET || "dominion-dev-secret-change-in-production";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET not configured");
+  return secret;
 }
 
 /** Verify HMAC-signed state parameter. Format: <base64url-payload>.<base64url-signature> */

@@ -2,20 +2,15 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 
 const ALGORITHM = "aes-256-gcm";
 
-let _warnedFallback = false;
-
 function getKey(): Buffer {
   const secret = process.env.AUTH_SECRET;
-  if (!secret && !_warnedFallback) {
-    _warnedFallback = true;
-    console.warn(
-      "[crypto] WARNING: AUTH_SECRET not set! Using insecure fallback. " +
-      "All encrypted data (API keys, tokens) is protected by a PUBLIC default key. " +
-      "Set AUTH_SECRET in your .env file."
+  if (!secret) {
+    throw new Error(
+      "AUTH_SECRET not configured. The application should have auto-generated one on startup. " +
+      "Check that .env is writable or set AUTH_SECRET explicitly."
     );
   }
-  const effectiveSecret = secret || "dominion-dev-secret-change-in-production";
-  return scryptSync(effectiveSecret, "dominion-salt", 32);
+  return scryptSync(secret, "dominion-salt", 32);
 }
 
 /**

@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "returnUrl must be a relative path" }, { status: 400 });
     }
 
-    const secret = process.env.AUTH_SECRET || "dominion-dev-secret-change-in-production";
+    const secret = process.env.AUTH_SECRET;
+    if (!secret) {
+      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+    }
     const payload = Buffer.from(JSON.stringify({ pluginId, connectionId, returnUrl })).toString("base64url");
     const signature = createHmac("sha256", secret).update(payload).digest("base64url");
     const signedState = `${payload}.${signature}`;
