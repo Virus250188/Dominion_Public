@@ -24,6 +24,10 @@ export async function updateUserSettings(
     aiEndpoint?: string | null;
     dashboardWidthPercent?: number;
     groupsWidthPercent?: number;
+    textPrimary?: string | null;
+    textSecondary?: string | null;
+    glassAccent?: string | null;
+    backgroundConfig?: string | null;
   }
 ) {
   const authenticatedUserId = await requireUserId();

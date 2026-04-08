@@ -3,6 +3,7 @@
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { themes } from "@/types/theme";
 import type { Theme } from "@/types/theme";
+import type { BackgroundConfig } from "@/types/background";
 import { updateUserSettings } from "@/lib/actions/settings";
 import { useState, useTransition } from "react";
 import { Label } from "@/components/ui/label";
@@ -17,28 +18,32 @@ interface AppearanceSettingsProps {
   showClock: boolean;
   showGreeting: boolean;
   backgroundType?: string;
+  textPrimary?: string | null;
+  textSecondary?: string | null;
+  glassAccent?: string | null;
+  backgroundConfig?: string | null;
 }
 
 const backgroundOptions = [
   {
-    id: "gradient",
-    name: "Gradient",
-    preview: "linear-gradient(135deg, #3b0764, #1e1b4b, #0f172a, #312e81)",
+    id: "plasma",
+    name: "Plasma Flow",
+    preview: "linear-gradient(135deg, #3b0764, #6d28d9, #1e1b4b, #4338ca)",
+  },
+  {
+    id: "mesh",
+    name: "Mesh Gradient",
+    preview: "linear-gradient(135deg, #6366f1, #ec4899, #22d3ee, #fbbf24)",
   },
   {
     id: "aurora",
-    name: "Soft Aurora",
-    preview: "linear-gradient(135deg, #581c87, #0f766e, #064e3b, #1e3a8a)",
+    name: "Aurora Waves",
+    preview: "linear-gradient(135deg, #0f766e, #7c3aed, #22d3ee, #a855f7)",
   },
   {
-    id: "lines",
-    name: "Floating Lines",
-    preview: "linear-gradient(135deg, #0a0a12, #1e1b4b, #0a0a12, #312e81)",
-  },
-  {
-    id: "prism",
-    name: "Prism",
-    preview: "linear-gradient(135deg, #dc2626, #f59e0b, #22c55e, #3b82f6, #a855f7)",
+    id: "nebula",
+    name: "Particle Nebula",
+    preview: "linear-gradient(135deg, #0a0a18, #6366f1, #ec4899, #0a0a18)",
   },
 ];
 
@@ -49,10 +54,25 @@ export function AppearanceSettings({
   showClock: _showClock,
   showGreeting: _showGreeting,
   backgroundType: _backgroundType,
+  textPrimary: _textPrimary,
+  textSecondary: _textSecondary,
+  glassAccent: _glassAccent,
+  backgroundConfig: _backgroundConfig,
 }: AppearanceSettingsProps) {
-  const { theme, setTheme, background, setBackground, backgroundType, setBackgroundType } = useTheme();
+  const {
+    theme, setTheme,
+    background, setBackground,
+    backgroundType, setBackgroundType,
+    textPrimary: ctxTextPrimary, setTextPrimary,
+    textSecondary: ctxTextSecondary, setTextSecondary,
+    glassAccent: ctxGlassAccent, setGlassAccent,
+    backgroundConfig, setBackgroundConfig,
+  } = useTheme();
   const [isPending, startTransition] = useTransition();
   const [gridColumns, setGridColumns] = useState(initialColumns);
+  const [localTextPrimary, setLocalTextPrimary] = useState(ctxTextPrimary || "");
+  const [localTextSecondary, setLocalTextSecondary] = useState(ctxTextSecondary || "");
+  const [localGlassAccent, setLocalGlassAccent] = useState(ctxGlassAccent || "");
 
   // Theme and background changes are persisted to DB by ThemeProvider itself,
   // so we only need to call the context setters here.
@@ -62,6 +82,11 @@ export function AppearanceSettings({
 
   const handleBackgroundTypeChange = (type: string) => {
     setBackgroundType(type);
+  };
+
+  const updateBgConfig = (key: string, partial: Record<string, number>) => {
+    const current = backgroundConfig;
+    setBackgroundConfig({ ...current, [key]: { ...(current as Record<string, unknown>)[key] as Record<string, number>, ...partial } });
   };
 
   return (
@@ -119,6 +144,112 @@ export function AppearanceSettings({
               )}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Anpassen — Color Customization */}
+      <section>
+        <Label className="text-base font-semibold mb-4 block">Anpassen</Label>
+        <div className="glass-card p-5 space-y-5">
+          <div className="flex gap-6 items-start">
+            {/* Live Preview Tile */}
+            <div
+              className="glass-card relative flex flex-col items-center justify-center gap-1.5 p-3 pt-6 w-[120px] h-[120px] flex-shrink-0"
+              style={{
+                ...(localTextPrimary ? { "--text-primary-custom": localTextPrimary } as React.CSSProperties : {}),
+                ...(localTextSecondary ? { "--text-secondary-custom": localTextSecondary } as React.CSSProperties : {}),
+                ...(localGlassAccent ? { "--glass-accent": localGlassAccent } as React.CSSProperties : {}),
+              }}
+            >
+              <div className="glass-chromatic rounded-[inherit]" />
+              <div className="glass-shine" />
+              <div className="glass-edge-glow" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-lg relative z-[4]"
+                style={{ backgroundColor: "#6366f1" }}
+              >
+                ⚡
+              </div>
+              <span
+                className="text-xs font-semibold text-center leading-tight relative z-[4]"
+                style={{ color: "var(--text-primary-custom, var(--foreground))" }}
+              >
+                Emby
+              </span>
+              <span
+                className="text-[10px] text-center relative z-[4]"
+                style={{ color: "var(--text-secondary-custom, var(--muted-foreground))" }}
+              >
+                Media Server
+              </span>
+            </div>
+
+            {/* Color Pickers */}
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localTextPrimary || "#f0f0f0"}
+                  onChange={(e) => {
+                    setLocalTextPrimary(e.target.value);
+                    setTextPrimary(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Primary Text</div>
+                  <div className="text-xs text-muted-foreground">Tile-Titel, Gruppen-Titel</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localTextSecondary || "#999999"}
+                  onChange={(e) => {
+                    setLocalTextSecondary(e.target.value);
+                    setTextSecondary(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Secondary Text</div>
+                  <div className="text-xs text-muted-foreground">Beschreibungen, Stats-Labels</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={localGlassAccent || "#6366f1"}
+                  onChange={(e) => {
+                    setLocalGlassAccent(e.target.value);
+                    setGlassAccent(e.target.value);
+                  }}
+                  className="w-8 h-8 rounded-lg border border-border cursor-pointer bg-transparent"
+                />
+                <div>
+                  <div className="text-sm font-medium text-foreground">Glass Akzent</div>
+                  <div className="text-xs text-muted-foreground">Chromatische Kanten, Glow-Effekte</div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setLocalTextPrimary("");
+                  setLocalTextSecondary("");
+                  setLocalGlassAccent("");
+                  setTextPrimary(null);
+                  setTextSecondary(null);
+                  setGlassAccent(null);
+                }}
+              >
+                Zuruecksetzen
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -224,6 +355,118 @@ export function AppearanceSettings({
           </div>
         )}
       </section>
+
+      {/* Background Options — per-background sliders */}
+      {!background && (
+        <section>
+          <Label className="text-base font-semibold mb-4 block">Hintergrund-Optionen</Label>
+          <div className="glass-card p-4 space-y-4">
+            {backgroundType === "plasma" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="10" step="1"
+                    value={Math.round((backgroundConfig.plasma?.speed ?? 0.004) * 1000)}
+                    onChange={(e) => updateBgConfig("plasma", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Farbton</Label>
+                  <input type="range" min="0" max="360" step="1"
+                    value={backgroundConfig.plasma?.hue ?? 270}
+                    onChange={(e) => updateBgConfig("plasma", { hue: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Intensitaet</Label>
+                  <input type="range" min="30" max="100" step="5"
+                    value={Math.round((backgroundConfig.plasma?.intensity ?? 0.5) * 100)}
+                    onChange={(e) => updateBgConfig("plasma", { intensity: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "mesh" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="10" step="1"
+                    value={Math.round((backgroundConfig.mesh?.speed ?? 0.005) * 1000)}
+                    onChange={(e) => updateBgConfig("mesh", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Saettigung</Label>
+                  <input type="range" min="20" max="100" step="5"
+                    value={Math.round((backgroundConfig.mesh?.saturation ?? 0.5) * 100)}
+                    onChange={(e) => updateBgConfig("mesh", { saturation: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Blob-Groesse</Label>
+                  <input type="range" min="20" max="50" step="1"
+                    value={Math.round((backgroundConfig.mesh?.blobSize ?? 0.35) * 100)}
+                    onChange={(e) => updateBgConfig("mesh", { blobSize: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "aurora" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="3" max="20" step="1"
+                    value={Math.round((backgroundConfig.aurora?.speed ?? 0.008) * 1000)}
+                    onChange={(e) => updateBgConfig("aurora", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Wellenanzahl</Label>
+                  <input type="range" min="3" max="5" step="1"
+                    value={backgroundConfig.aurora?.bandCount ?? 5}
+                    onChange={(e) => updateBgConfig("aurora", { bandCount: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Amplitude</Label>
+                  <input type="range" min="20" max="80" step="5"
+                    value={backgroundConfig.aurora?.amplitude ?? 40}
+                    onChange={(e) => updateBgConfig("aurora", { amplitude: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "nebula" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="8" step="1"
+                    value={Math.round((backgroundConfig.nebula?.speed ?? 0.3) * 10)}
+                    onChange={(e) => updateBgConfig("nebula", { speed: Number(e.target.value) / 10 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Partikelanzahl</Label>
+                  <input type="range" min="50" max="200" step="10"
+                    value={backgroundConfig.nebula?.count ?? 120}
+                    onChange={(e) => updateBgConfig("nebula", { count: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Glow-Groesse</Label>
+                  <input type="range" min="4" max="12" step="1"
+                    value={backgroundConfig.nebula?.glowSize ?? 8}
+                    onChange={(e) => updateBgConfig("nebula", { glowSize: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Grid Settings - simplified for now */}
       <section>

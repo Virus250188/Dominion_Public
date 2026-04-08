@@ -19,7 +19,11 @@ export default async function SettingsPage() {
         showSearch={settings?.showSearch ?? true}
         showClock={settings?.showClock ?? true}
         showGreeting={settings?.showGreeting ?? true}
-        backgroundType={settings?.backgroundType || "gradient"}
+        backgroundType={settings?.backgroundType || "plasma"}
+        textPrimary={settings?.textPrimary ?? null}
+        textSecondary={settings?.textSecondary ?? null}
+        glassAccent={settings?.glassAccent ?? null}
+        backgroundConfig={settings?.backgroundConfig ?? null}
       />
     </div>
   );

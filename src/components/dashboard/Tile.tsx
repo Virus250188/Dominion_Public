@@ -150,6 +150,11 @@ function SmallTileLayout({
 
       <TileContextMenu tile={tile} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} groups={groups} onMoveToGroup={onMoveToGroup} setIsMenuOpen={setIsMenuOpen} />
 
+      {/* Crystal glass layers */}
+      <div className="glass-chromatic rounded-[inherit]" />
+      <div className="glass-shine" />
+      <div className="glass-edge-glow" />
+
       {/* Icon */}
       <AppIcon
         appName={tile.title}
@@ -160,13 +165,13 @@ function SmallTileLayout({
       />
 
       {/* Title */}
-      <span className="text-xs font-semibold text-foreground text-center leading-tight line-clamp-1">
+      <span className="text-xs font-semibold text-tile-title text-center leading-tight line-clamp-1">
         {tile.title}
       </span>
 
       {/* Description - only show when no stats (stats are more important in 1x1) */}
       {tile.description && !stats && (
-        <span className="text-[10px] text-muted-foreground text-center line-clamp-1">
+        <span className="text-[10px] text-tile-description text-center line-clamp-1">
           {tile.description}
         </span>
       )}
@@ -214,6 +219,10 @@ function MediumTileLayout({
         }}
       >
         <TileContextMenu tile={tile} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} groups={groups} onMoveToGroup={onMoveToGroup} setIsMenuOpen={setIsMenuOpen} />
+        {/* Crystal glass layers */}
+        <div className="glass-chromatic rounded-[inherit]" />
+        <div className="glass-shine" />
+        <div className="glass-edge-glow" />
         {widget}
       </motion.div>
     );
@@ -244,6 +253,11 @@ function MediumTileLayout({
 
       <TileContextMenu tile={tile} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} groups={groups} onMoveToGroup={onMoveToGroup} setIsMenuOpen={setIsMenuOpen} />
 
+      {/* Crystal glass layers */}
+      <div className="glass-chromatic rounded-[inherit]" />
+      <div className="glass-shine" />
+      <div className="glass-edge-glow" />
+
       {/* Icon */}
       <div className="flex-shrink-0">
         <AppIcon
@@ -257,11 +271,11 @@ function MediumTileLayout({
 
       {/* Title + description */}
       <div className="flex flex-col gap-0.5 min-w-0 shrink-0">
-        <span className="text-sm font-semibold text-foreground leading-tight line-clamp-1">
+        <span className="text-sm font-semibold text-tile-title leading-tight line-clamp-1">
           {tile.title}
         </span>
         {tile.description && (
-          <span className="text-[11px] text-muted-foreground line-clamp-1">
+          <span className="text-[11px] text-tile-description line-clamp-1">
             {tile.description}
           </span>
         )}
@@ -314,6 +328,10 @@ function LargeTileLayout({
         }}
       >
         <TileContextMenu tile={tile} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} groups={groups} onMoveToGroup={onMoveToGroup} setIsMenuOpen={setIsMenuOpen} />
+        {/* Crystal glass layers */}
+        <div className="glass-chromatic rounded-[inherit]" />
+        <div className="glass-shine" />
+        <div className="glass-edge-glow" />
         <div className="flex-1 flex flex-col min-h-0">
           {widget}
         </div>
@@ -339,6 +357,11 @@ function LargeTileLayout({
     >
       <TileContextMenu tile={tile} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} groups={groups} onMoveToGroup={onMoveToGroup} setIsMenuOpen={setIsMenuOpen} />
 
+      {/* Crystal glass layers */}
+      <div className="glass-chromatic rounded-[inherit]" />
+      <div className="glass-shine" />
+      <div className="glass-edge-glow" />
+
       {/* Compact header row */}
       <div className="flex items-center gap-3 mb-3">
         <AppIcon
@@ -348,7 +371,7 @@ function LargeTileLayout({
           customIcon={tile.customIconSvg}
           className="shadow-md flex-shrink-0"
         />
-        <span className="text-sm font-semibold text-foreground leading-tight line-clamp-1 flex-1 min-w-0">
+        <span className="text-sm font-semibold text-tile-title leading-tight line-clamp-1 flex-1 min-w-0">
           {tile.title}
         </span>
         {tile.pinned && <Pin className="h-3 w-3 text-primary/60 flex-shrink-0" />}
@@ -370,7 +393,7 @@ function LargeTileLayout({
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-2">
             {tile.description && (
-              <span className="text-sm text-muted-foreground text-center line-clamp-3 max-w-[80%]">
+              <span className="text-sm text-tile-description text-center line-clamp-3 max-w-[80%]">
                 {tile.description}
               </span>
             )}

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { Theme } from "@/types/theme";
+import type { BackgroundConfig } from "@/types/background";
 import { updateUserSettings } from "@/lib/actions/settings";
 export type { Theme };
 
@@ -12,6 +13,14 @@ interface ThemeContextType {
   setBackground: (bg: string | null) => void;
   backgroundType: string;
   setBackgroundType: (type: string) => void;
+  textPrimary: string | null;
+  setTextPrimary: (color: string | null) => void;
+  textSecondary: string | null;
+  setTextSecondary: (color: string | null) => void;
+  glassAccent: string | null;
+  setGlassAccent: (color: string | null) => void;
+  backgroundConfig: BackgroundConfig;
+  setBackgroundConfig: (config: BackgroundConfig) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -25,18 +34,40 @@ const BG_TYPE_STORAGE_KEY = "dominion-background-type";
  * Errors are silently caught - DB persistence is best-effort,
  * localStorage is the immediate store for UI responsiveness.
  */
-function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string }) {
-  updateUserSettings(undefined, data).catch(() => {
-    // Silently ignore - user may not be authenticated (login page)
-  });
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingData: Record<string, unknown> = {};
+
+function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string; textPrimary?: string | null; textSecondary?: string | null; glassAccent?: string | null; backgroundConfig?: string | null }, immediate = false) {
+  // Merge with any pending data
+  pendingData = { ...pendingData, ...data };
+
+  if (immediate) {
+    if (persistTimer) clearTimeout(persistTimer);
+    const toSend = { ...pendingData };
+    pendingData = {};
+    updateUserSettings(undefined, toSend).catch(() => {});
+    return;
+  }
+
+  // Debounce: wait 500ms before persisting (avoids compile loop on color picker drag)
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    const toSend = { ...pendingData };
+    pendingData = {};
+    updateUserSettings(undefined, toSend).catch(() => {});
+  }, 500);
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = "glass-dark",
   defaultBackground = null,
-  defaultBackgroundType = "gradient",
+  defaultBackgroundType = "plasma",
   dbSettingsLoaded = false,
+  defaultTextPrimary = null as string | null,
+  defaultTextSecondary = null as string | null,
+  defaultGlassAccent = null as string | null,
+  defaultBackgroundConfig = null as string | null,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
@@ -44,11 +75,22 @@ export function ThemeProvider({
   defaultBackgroundType?: string;
   /** True when settings were loaded from DB (authenticated user). DB values take priority over localStorage. */
   dbSettingsLoaded?: boolean;
+  defaultTextPrimary?: string | null;
+  defaultTextSecondary?: string | null;
+  defaultGlassAccent?: string | null;
+  defaultBackgroundConfig?: string | null;
 }) {
   // DB values come as props (server-rendered). Use them as initial state.
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [background, setBackgroundState] = useState<string | null>(defaultBackground);
   const [backgroundType, setBackgroundTypeState] = useState<string>(defaultBackgroundType);
+  const [textPrimary, setTextPrimaryState] = useState<string | null>(defaultTextPrimary ?? null);
+  const [textSecondary, setTextSecondaryState] = useState<string | null>(defaultTextSecondary ?? null);
+  const [glassAccent, setGlassAccentState] = useState<string | null>(defaultGlassAccent ?? null);
+  const [backgroundConfig, setBackgroundConfigState] = useState<BackgroundConfig>(() => {
+    try { return defaultBackgroundConfig ? JSON.parse(defaultBackgroundConfig) : {}; }
+    catch { return {}; }
+  });
   const [mounted, setMounted] = useState(false);
 
   const dbLoaded = useRef(dbSettingsLoaded);
@@ -95,40 +137,47 @@ export function ThemeProvider({
     // Apply immediately, don't wait for re-render
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    persistToDb({ theme: newTheme });
+    persistToDb({ theme: newTheme }, true);
   }, []);
 
   // Apply backgroundType classes to body
   useEffect(() => {
     if (!mounted) return;
 
-    if (backgroundType === "gradient") {
-      document.body.classList.add("bg-animated-gradient");
-      document.body.style.backgroundImage = "";
-      document.body.style.backgroundSize = "";
-      document.body.style.backgroundPosition = "";
-      document.body.style.backgroundAttachment = "";
-      document.body.style.animation = "";
-    } else if (backgroundType === "wallpaper" && background) {
-      document.body.classList.remove("bg-animated-gradient");
-      const isUrl = background.startsWith("http") || background.startsWith("/") || background.startsWith("blob:");
-      document.body.style.backgroundImage = isUrl ? `url(${background})` : background;
+    if (backgroundType === "wallpaper" && background) {
+      document.body.style.backgroundImage = `url(${background})`;
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center";
       document.body.style.backgroundAttachment = "fixed";
-      document.body.style.animation = "none";
     } else {
-      // aurora, lines, prism - canvas handles the background
-      document.body.classList.remove("bg-animated-gradient");
       document.body.style.backgroundImage = "";
       document.body.style.backgroundSize = "";
       document.body.style.backgroundPosition = "";
       document.body.style.backgroundAttachment = "";
-      document.body.style.animation = "none";
     }
 
     localStorage.setItem(BG_TYPE_STORAGE_KEY, backgroundType);
   }, [backgroundType, background, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const root = document.documentElement;
+    if (textPrimary) {
+      root.style.setProperty("--text-primary-custom", textPrimary);
+    } else {
+      root.style.removeProperty("--text-primary-custom");
+    }
+    if (textSecondary) {
+      root.style.setProperty("--text-secondary-custom", textSecondary);
+    } else {
+      root.style.removeProperty("--text-secondary-custom");
+    }
+    if (glassAccent) {
+      root.style.setProperty("--glass-accent", glassAccent);
+    } else {
+      root.style.removeProperty("--glass-accent");
+    }
+  }, [textPrimary, textSecondary, glassAccent, mounted]);
 
   // When wallpaper background value changes (set or removed)
   const setBackground = useCallback((bg: string | null) => {
@@ -138,24 +187,44 @@ export function ThemeProvider({
       setBackgroundTypeState("wallpaper");
       localStorage.setItem(BG_STORAGE_KEY, bg);
       localStorage.setItem(BG_TYPE_STORAGE_KEY, "wallpaper");
-      persistToDb({ background: bg, backgroundType: "wallpaper" });
+      persistToDb({ background: bg, backgroundType: "wallpaper" }, true);
     } else {
-      // Wallpaper removed - revert to gradient
-      setBackgroundTypeState("gradient");
+      // Wallpaper removed - revert to plasma
+      setBackgroundTypeState("plasma");
       localStorage.removeItem(BG_STORAGE_KEY);
-      localStorage.setItem(BG_TYPE_STORAGE_KEY, "gradient");
-      persistToDb({ background: null, backgroundType: "gradient" });
+      localStorage.setItem(BG_TYPE_STORAGE_KEY, "plasma");
+      persistToDb({ background: null, backgroundType: "plasma" }, true);
     }
   }, []);
 
   const setBackgroundType = useCallback((type: string) => {
     setBackgroundTypeState(type);
     localStorage.setItem(BG_TYPE_STORAGE_KEY, type);
-    persistToDb({ backgroundType: type });
+    persistToDb({ backgroundType: type }, true);
+  }, []);
+
+  const setTextPrimary = useCallback((color: string | null) => {
+    setTextPrimaryState(color);
+    persistToDb({ textPrimary: color });
+  }, []);
+
+  const setTextSecondary = useCallback((color: string | null) => {
+    setTextSecondaryState(color);
+    persistToDb({ textSecondary: color });
+  }, []);
+
+  const setGlassAccent = useCallback((color: string | null) => {
+    setGlassAccentState(color);
+    persistToDb({ glassAccent: color });
+  }, []);
+
+  const setBackgroundConfig = useCallback((config: BackgroundConfig) => {
+    setBackgroundConfigState(config);
+    persistToDb({ backgroundConfig: JSON.stringify(config) });
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, background, setBackground, backgroundType, setBackgroundType }}>
+    <ThemeContext.Provider value={{ theme, setTheme, background, setBackground, backgroundType, setBackgroundType, textPrimary, setTextPrimary, textSecondary, setTextSecondary, glassAccent, setGlassAccent, backgroundConfig, setBackgroundConfig }}>
       {mounted ? children : <div style={{ visibility: "hidden" }}>{children}</div>}
     </ThemeContext.Provider>
   );
