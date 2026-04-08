@@ -177,8 +177,10 @@ export async function updateTile(
     }
   }
 
+  // Strip groupId — group assignment is handled via GroupTile, not on the Tile model
+  const { groupId: _groupId, ...rest } = data as Record<string, unknown> & typeof data;
   // Encrypt enhanced config before storing
-  const updateData = { ...data };
+  const updateData = { ...rest };
   if (updateData.enhancedConfig) {
     updateData.enhancedConfig = encrypt(updateData.enhancedConfig);
   }
