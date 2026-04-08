@@ -209,6 +209,9 @@ export function GroupDialog({
                       <span className="text-sm text-foreground truncate">
                         {tile.title}
                       </span>
+                      <span className="text-xs text-muted-foreground ml-auto flex-shrink-0 tabular-nums">
+                        {tile.columnSpan}x{tile.rowSpan}
+                      </span>
                     </label>
                   );
                 })}
