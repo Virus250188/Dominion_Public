@@ -21,24 +21,24 @@ interface AppearanceSettingsProps {
 
 const backgroundOptions = [
   {
-    id: "gradient",
-    name: "Gradient",
-    preview: "linear-gradient(135deg, #3b0764, #1e1b4b, #0f172a, #312e81)",
+    id: "plasma",
+    name: "Plasma Flow",
+    preview: "linear-gradient(135deg, #3b0764, #6d28d9, #1e1b4b, #4338ca)",
+  },
+  {
+    id: "mesh",
+    name: "Mesh Gradient",
+    preview: "linear-gradient(135deg, #6366f1, #ec4899, #22d3ee, #fbbf24)",
   },
   {
     id: "aurora",
-    name: "Soft Aurora",
-    preview: "linear-gradient(135deg, #581c87, #0f766e, #064e3b, #1e3a8a)",
+    name: "Aurora Waves",
+    preview: "linear-gradient(135deg, #0f766e, #7c3aed, #22d3ee, #a855f7)",
   },
   {
-    id: "lines",
-    name: "Floating Lines",
-    preview: "linear-gradient(135deg, #0a0a12, #1e1b4b, #0a0a12, #312e81)",
-  },
-  {
-    id: "prism",
-    name: "Prism",
-    preview: "linear-gradient(135deg, #dc2626, #f59e0b, #22c55e, #3b82f6, #a855f7)",
+    id: "nebula",
+    name: "Particle Nebula",
+    preview: "linear-gradient(135deg, #0a0a18, #6366f1, #ec4899, #0a0a18)",
   },
 ];
 
