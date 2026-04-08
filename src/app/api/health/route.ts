@@ -82,6 +82,8 @@ function checkWithHttps(url: string): Promise<HealthResult> {
           port: parsed.port || 443,
           path: parsed.pathname || "/",
           method: "HEAD",
+          // lgtm[js/disabling-certificate-validation]
+          // Intentional: self-hosted dashboard checks internal services with self-signed certs
           rejectUnauthorized: false,
           timeout: REQUEST_TIMEOUT_MS,
         },
@@ -102,17 +104,30 @@ function checkWithHttps(url: string): Promise<HealthResult> {
   });
 }
 
+/**
+ * Check URL health status.
+ * Security: URLs are pre-filtered by isUrlBlocked() which rejects cloud metadata,
+ * loopback, and link-local addresses. Private IPs (192.168.x, 10.x) are intentionally
+ * ALLOWED because this is a self-hosted dashboard that monitors local network services.
+ */
 async function checkUrl(url: string): Promise<HealthResult> {
+    const parsed = new URL(url);
+    if (parsed.hostname === "169.254.169.254") {
+      return { online: false, latencyMs: null };
+    }
+
   const start = Date.now();
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
+      // lgtm[js/request-forgery]
+      // Intentional: self-hosted dashboard monitors user-configured internal services
       const res = await fetch(url, {
         method: "HEAD",
         signal: controller.signal,
-        redirect: "follow",
+        redirect: "manual",
       });
       clearTimeout(timeout);
       const latencyMs = Date.now() - start;
