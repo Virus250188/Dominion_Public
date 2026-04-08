@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect, memo } from "react";
+import type { MeshConfig } from "@/types/background";
+import { defaultMeshConfig } from "@/types/background";
 
 const FPS_INTERVAL = 1000 / 30;
 
@@ -8,12 +10,14 @@ interface MeshPoint {
   x: number; y: number; vx: number; vy: number; r: number; color: number[];
 }
 
-function MeshGradientInner({ className }: { className?: string }) {
+function MeshGradientInner({ className, config }: { className?: string; config?: Partial<MeshConfig> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef(0);
   const lastFrameTime = useRef(0);
   const pointsRef = useRef<MeshPoint[]>([]);
   const timeRef = useRef(0);
+  const configRef = useRef({ ...defaultMeshConfig, ...config });
+  configRef.current = { ...defaultMeshConfig, ...config };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,6 +58,9 @@ function MeshGradientInner({ className }: { className?: string }) {
       if (elapsed < FPS_INTERVAL) return;
       lastFrameTime.current = timestamp - (elapsed % FPS_INTERVAL);
 
+      const cfg = configRef.current;
+      const speedMultiplier = cfg.speed / defaultMeshConfig.speed;
+
       timeRef.current++;
       const t = timeRef.current;
 
@@ -62,17 +69,19 @@ function MeshGradientInner({ className }: { className?: string }) {
       ctx!.globalCompositeOperation = "lighter";
 
       for (const p of pointsRef.current) {
-        p.x += p.vx + Math.sin(t * 0.005) * 0.0002;
-        p.y += p.vy + Math.cos(t * 0.004) * 0.0002;
+        p.x += (p.vx + Math.sin(t * 0.005) * 0.0002) * speedMultiplier;
+        p.y += (p.vy + Math.cos(t * 0.004) * 0.0002) * speedMultiplier;
         if (p.x < 0 || p.x > 1) p.vx *= -1;
         if (p.y < 0 || p.y > 1) p.vy *= -1;
         p.x = Math.max(0, Math.min(1, p.x));
         p.y = Math.max(0, Math.min(1, p.y));
 
-        const radius = p.r * Math.min(w, h);
+        const blobScale = cfg.blobSize / defaultMeshConfig.blobSize;
+        const radius = p.r * blobScale * Math.min(w, h);
+        const sat = cfg.saturation;
         const grd = ctx!.createRadialGradient(p.x * w, p.y * h, 0, p.x * w, p.y * h, radius);
-        grd.addColorStop(0, `rgba(${p.color.join(",")}, 0.5)`);
-        grd.addColorStop(0.5, `rgba(${p.color.join(",")}, 0.15)`);
+        grd.addColorStop(0, `rgba(${p.color.join(",")}, ${0.5 * sat})`);
+        grd.addColorStop(0.5, `rgba(${p.color.join(",")}, ${0.15 * sat})`);
         grd.addColorStop(1, `rgba(${p.color.join(",")}, 0)`);
         ctx!.fillStyle = grd;
         ctx!.fillRect(0, 0, w, h);

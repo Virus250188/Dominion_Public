@@ -27,6 +27,7 @@ export async function updateUserSettings(
     textPrimary?: string | null;
     textSecondary?: string | null;
     glassAccent?: string | null;
+    backgroundConfig?: string | null;
   }
 ) {
   const authenticatedUserId = await requireUserId();

@@ -51,6 +51,7 @@ export default async function RootLayout({
   let dbTextPrimary: string | null = null;
   let dbTextSecondary: string | null = null;
   let dbGlassAccent: string | null = null;
+  let dbBackgroundConfig: string | null = null;
 
   try {
     const session = await auth();
@@ -65,6 +66,7 @@ export default async function RootLayout({
           dbTextPrimary = settings.textPrimary ?? null;
           dbTextSecondary = settings.textSecondary ?? null;
           dbGlassAccent = settings.glassAccent ?? null;
+          dbBackgroundConfig = settings.backgroundConfig ?? null;
           dbSettingsLoaded = true;
         }
       }
@@ -98,6 +100,7 @@ export default async function RootLayout({
           defaultTextPrimary={dbTextPrimary}
           defaultTextSecondary={dbTextSecondary}
           defaultGlassAccent={dbGlassAccent}
+          defaultBackgroundConfig={dbBackgroundConfig}
         >
           <EditModeProvider>
             <NotificationPanelProvider>

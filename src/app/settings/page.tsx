@@ -23,6 +23,7 @@ export default async function SettingsPage() {
         textPrimary={settings?.textPrimary ?? null}
         textSecondary={settings?.textSecondary ?? null}
         glassAccent={settings?.glassAccent ?? null}
+        backgroundConfig={settings?.backgroundConfig ?? null}
       />
     </div>
   );

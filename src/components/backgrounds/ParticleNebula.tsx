@@ -1,21 +1,25 @@
 "use client";
 
 import { useRef, useEffect, memo } from "react";
+import type { NebulaConfig } from "@/types/background";
+import { defaultNebulaConfig } from "@/types/background";
 
 const FPS_INTERVAL = 1000 / 30;
-const PARTICLE_COUNT = 120;
 
 interface Particle {
   x: number; y: number; vx: number; vy: number; r: number;
   color: number[]; alpha: number; pulse: number; pulseSpeed: number;
 }
 
-function ParticleNebulaInner({ className }: { className?: string }) {
+function ParticleNebulaInner({ className, config }: { className?: string; config?: Partial<NebulaConfig> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef(0);
   const lastFrameTime = useRef(0);
   const particlesRef = useRef<Particle[]>([]);
+  const prevCountRef = useRef(0);
   const timeRef = useRef(0);
+  const configRef = useRef({ ...defaultNebulaConfig, ...config });
+  configRef.current = { ...defaultNebulaConfig, ...config };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -31,8 +35,8 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       [34, 211, 238], [251, 191, 36], [16, 185, 129],
     ];
 
-    function createParticles(): Particle[] {
-      return Array.from({ length: PARTICLE_COUNT }, () => ({
+    function createParticles(count: number): Particle[] {
+      return Array.from({ length: count }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
         vx: (Math.random() - 0.5) * 0.3,
@@ -55,7 +59,9 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       canvas!.style.height = `${h}px`;
       ctx!.scale(dpr, dpr);
       if (particlesRef.current.length === 0) {
-        particlesRef.current = createParticles();
+        const count = configRef.current.count;
+        particlesRef.current = createParticles(count);
+        prevCountRef.current = count;
       }
     }
 
@@ -64,6 +70,15 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       const elapsed = timestamp - lastFrameTime.current;
       if (elapsed < FPS_INTERVAL) return;
       lastFrameTime.current = timestamp - (elapsed % FPS_INTERVAL);
+
+      const cfg = configRef.current;
+      const speedMultiplier = cfg.speed / defaultNebulaConfig.speed;
+
+      // Recreate particles if count changed
+      if (cfg.count !== prevCountRef.current) {
+        particlesRef.current = createParticles(cfg.count);
+        prevCountRef.current = cfg.count;
+      }
 
       timeRef.current++;
       const t = timeRef.current;
@@ -91,8 +106,8 @@ function ParticleNebulaInner({ className }: { className?: string }) {
       ctx!.fillRect(0, 0, w, h);
 
       for (const p of particlesRef.current) {
-        p.x += p.vx + Math.sin(t * 0.005 + p.pulse) * 0.1;
-        p.y += p.vy + Math.cos(t * 0.004 + p.pulse) * 0.1;
+        p.x += (p.vx + Math.sin(t * 0.005 + p.pulse) * 0.1) * speedMultiplier;
+        p.y += (p.vy + Math.cos(t * 0.004 + p.pulse) * 0.1) * speedMultiplier;
         p.pulse += p.pulseSpeed;
 
         if (p.x < -10) p.x = w + 10;
@@ -107,7 +122,7 @@ function ParticleNebulaInner({ className }: { className?: string }) {
         const pg = Math.min(255, Math.max(0, p.color[1] + hueShift * 0.5));
         const pb = Math.min(255, Math.max(0, p.color[2] - hueShift * 0.3));
 
-        const glowR = p.r * 8;
+        const glowR = p.r * cfg.glowSize;
         const glow = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
         glow.addColorStop(0, `rgba(${pr},${pg},${pb}, ${a * 0.5})`);
         glow.addColorStop(0.3, `rgba(${pr},${pg},${pb}, ${a * 0.15})`);

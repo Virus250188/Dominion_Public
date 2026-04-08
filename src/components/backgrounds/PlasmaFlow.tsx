@@ -1,14 +1,18 @@
 "use client";
 
 import { useRef, useEffect, memo } from "react";
+import type { PlasmaConfig } from "@/types/background";
+import { defaultPlasmaConfig } from "@/types/background";
 
 const FPS_INTERVAL = 1000 / 30;
 
-function PlasmaFlowInner({ className }: { className?: string }) {
+function PlasmaFlowInner({ className, config }: { className?: string; config?: Partial<PlasmaConfig> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef(0);
   const lastFrameTime = useRef(0);
   const timeRef = useRef(0);
+  const configRef = useRef({ ...defaultPlasmaConfig, ...config });
+  configRef.current = { ...defaultPlasmaConfig, ...config };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,24 +42,32 @@ function PlasmaFlowInner({ className }: { className?: string }) {
       return v / 4;
     }
 
+    // Convert hue (0-360) to RGB phase offsets
+    function hueToPhases(hue: number): [number, number, number] {
+      const h = (hue / 360) * Math.PI * 2;
+      return [h, h + (2 * Math.PI / 3), h + (4 * Math.PI / 3)];
+    }
+
     function draw(timestamp: number) {
       animFrameRef.current = requestAnimationFrame(draw);
       const elapsed = timestamp - lastFrameTime.current;
       if (elapsed < FPS_INTERVAL) return;
       lastFrameTime.current = timestamp - (elapsed % FPS_INTERVAL);
 
-      timeRef.current += 0.004; // Much slower, calmer pace
+      const cfg = configRef.current;
+      timeRef.current += cfg.speed;
       const t = timeRef.current;
       const imgData = ctx!.createImageData(w, h);
       const step = 4;
+      const [phR, phG, phB] = hueToPhases(cfg.hue);
+      const intensity = cfg.intensity;
 
       for (let y = 0; y < h; y += step) {
         for (let x = 0; x < w; x += step) {
           const v = plasma(x, y, t);
-          // Darker, muted tones — deep purple/blue, not psychedelic
-          const r = Math.floor(25 + 40 * Math.sin(v * Math.PI + 0.5));
-          const g = Math.floor(15 + 25 * Math.sin(v * Math.PI + 2.5));
-          const b = Math.floor(50 + 50 * Math.sin(v * Math.PI + 4.0));
+          const r = Math.floor(15 + 80 * intensity * Math.max(0, Math.sin(v * Math.PI + phR)));
+          const g = Math.floor(15 + 80 * intensity * Math.max(0, Math.sin(v * Math.PI + phG)));
+          const b = Math.floor(15 + 80 * intensity * Math.max(0, Math.sin(v * Math.PI + phB)));
           for (let dy = 0; dy < step && y + dy < h; dy++) {
             for (let dx = 0; dx < step && x + dx < w; dx++) {
               const i = ((y + dy) * w + (x + dx)) * 4;

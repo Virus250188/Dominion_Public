@@ -3,6 +3,7 @@
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { themes } from "@/types/theme";
 import type { Theme } from "@/types/theme";
+import type { BackgroundConfig } from "@/types/background";
 import { updateUserSettings } from "@/lib/actions/settings";
 import { useState, useTransition } from "react";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ interface AppearanceSettingsProps {
   textPrimary?: string | null;
   textSecondary?: string | null;
   glassAccent?: string | null;
+  backgroundConfig?: string | null;
 }
 
 const backgroundOptions = [
@@ -55,6 +57,7 @@ export function AppearanceSettings({
   textPrimary: _textPrimary,
   textSecondary: _textSecondary,
   glassAccent: _glassAccent,
+  backgroundConfig: _backgroundConfig,
 }: AppearanceSettingsProps) {
   const {
     theme, setTheme,
@@ -63,6 +66,7 @@ export function AppearanceSettings({
     textPrimary: ctxTextPrimary, setTextPrimary,
     textSecondary: ctxTextSecondary, setTextSecondary,
     glassAccent: ctxGlassAccent, setGlassAccent,
+    backgroundConfig, setBackgroundConfig,
   } = useTheme();
   const [isPending, startTransition] = useTransition();
   const [gridColumns, setGridColumns] = useState(initialColumns);
@@ -78,6 +82,11 @@ export function AppearanceSettings({
 
   const handleBackgroundTypeChange = (type: string) => {
     setBackgroundType(type);
+  };
+
+  const updateBgConfig = (key: string, partial: Record<string, number>) => {
+    const current = backgroundConfig;
+    setBackgroundConfig({ ...current, [key]: { ...(current as Record<string, unknown>)[key] as Record<string, number>, ...partial } });
   };
 
   return (
@@ -346,6 +355,118 @@ export function AppearanceSettings({
           </div>
         )}
       </section>
+
+      {/* Background Options — per-background sliders */}
+      {!background && (
+        <section>
+          <Label className="text-base font-semibold mb-4 block">Hintergrund-Optionen</Label>
+          <div className="glass-card p-4 space-y-4">
+            {backgroundType === "plasma" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="10" step="1"
+                    value={Math.round((backgroundConfig.plasma?.speed ?? 0.004) * 1000)}
+                    onChange={(e) => updateBgConfig("plasma", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Farbton</Label>
+                  <input type="range" min="0" max="360" step="1"
+                    value={backgroundConfig.plasma?.hue ?? 270}
+                    onChange={(e) => updateBgConfig("plasma", { hue: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Intensitaet</Label>
+                  <input type="range" min="30" max="100" step="5"
+                    value={Math.round((backgroundConfig.plasma?.intensity ?? 0.5) * 100)}
+                    onChange={(e) => updateBgConfig("plasma", { intensity: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "mesh" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="10" step="1"
+                    value={Math.round((backgroundConfig.mesh?.speed ?? 0.005) * 1000)}
+                    onChange={(e) => updateBgConfig("mesh", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Saettigung</Label>
+                  <input type="range" min="20" max="100" step="5"
+                    value={Math.round((backgroundConfig.mesh?.saturation ?? 0.5) * 100)}
+                    onChange={(e) => updateBgConfig("mesh", { saturation: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Blob-Groesse</Label>
+                  <input type="range" min="20" max="50" step="1"
+                    value={Math.round((backgroundConfig.mesh?.blobSize ?? 0.35) * 100)}
+                    onChange={(e) => updateBgConfig("mesh", { blobSize: Number(e.target.value) / 100 })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "aurora" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="3" max="20" step="1"
+                    value={Math.round((backgroundConfig.aurora?.speed ?? 0.008) * 1000)}
+                    onChange={(e) => updateBgConfig("aurora", { speed: Number(e.target.value) / 1000 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Wellenanzahl</Label>
+                  <input type="range" min="3" max="5" step="1"
+                    value={backgroundConfig.aurora?.bandCount ?? 5}
+                    onChange={(e) => updateBgConfig("aurora", { bandCount: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Amplitude</Label>
+                  <input type="range" min="20" max="80" step="5"
+                    value={backgroundConfig.aurora?.amplitude ?? 40}
+                    onChange={(e) => updateBgConfig("aurora", { amplitude: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+
+            {backgroundType === "nebula" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Geschwindigkeit</Label>
+                  <input type="range" min="1" max="8" step="1"
+                    value={Math.round((backgroundConfig.nebula?.speed ?? 0.3) * 10)}
+                    onChange={(e) => updateBgConfig("nebula", { speed: Number(e.target.value) / 10 })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Partikelanzahl</Label>
+                  <input type="range" min="50" max="200" step="10"
+                    value={backgroundConfig.nebula?.count ?? 120}
+                    onChange={(e) => updateBgConfig("nebula", { count: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+                <div>
+                  <Label className="text-xs">Glow-Groesse</Label>
+                  <input type="range" min="4" max="12" step="1"
+                    value={backgroundConfig.nebula?.glowSize ?? 8}
+                    onChange={(e) => updateBgConfig("nebula", { glowSize: Number(e.target.value) })}
+                    className="w-full" />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Grid Settings - simplified for now */}
       <section>

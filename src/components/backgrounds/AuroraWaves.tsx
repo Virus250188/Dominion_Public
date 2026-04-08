@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect, memo } from "react";
+import type { AuroraConfig } from "@/types/background";
+import { defaultAuroraConfig } from "@/types/background";
 
 const FPS_INTERVAL = 1000 / 30;
 
@@ -9,11 +11,13 @@ interface AuroraBand {
   color: number[]; alpha: number; width: number;
 }
 
-function AuroraWavesInner({ className }: { className?: string }) {
+function AuroraWavesInner({ className, config }: { className?: string; config?: Partial<AuroraConfig> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef(0);
   const lastFrameTime = useRef(0);
   const timeRef = useRef(0);
+  const configRef = useRef({ ...defaultAuroraConfig, ...config });
+  configRef.current = { ...defaultAuroraConfig, ...config };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -49,21 +53,25 @@ function AuroraWavesInner({ className }: { className?: string }) {
       if (elapsed < FPS_INTERVAL) return;
       lastFrameTime.current = timestamp - (elapsed % FPS_INTERVAL);
 
-      timeRef.current += 0.008;
+      const cfg = configRef.current;
+      timeRef.current += cfg.speed;
       const t = timeRef.current;
+      const ampScale = cfg.amplitude / defaultAuroraConfig.amplitude;
+      const visibleBands = bands.slice(0, cfg.bandCount);
 
       ctx!.fillStyle = "rgb(10, 10, 24)";
       ctx!.fillRect(0, 0, w, h);
       ctx!.globalCompositeOperation = "lighter";
 
-      for (const band of bands) {
+      for (const band of visibleBands) {
         const baseY = h * band.offset;
+        const scaledAmp = band.amp * ampScale;
         ctx!.beginPath();
         ctx!.moveTo(0, h);
         for (let x = 0; x <= w; x += 4) {
           const y = baseY
-            + Math.sin(x * band.freq + t * band.speed) * band.amp
-            + Math.sin(x * band.freq * 1.5 + t * band.speed * 0.7) * band.amp * 0.5;
+            + Math.sin(x * band.freq + t * band.speed) * scaledAmp
+            + Math.sin(x * band.freq * 1.5 + t * band.speed * 0.7) * scaledAmp * 0.5;
           ctx!.lineTo(x, y);
         }
         ctx!.lineTo(w, h);

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import type { Theme } from "@/types/theme";
+import type { BackgroundConfig } from "@/types/background";
 import { updateUserSettings } from "@/lib/actions/settings";
 export type { Theme };
 
@@ -18,6 +19,8 @@ interface ThemeContextType {
   setTextSecondary: (color: string | null) => void;
   glassAccent: string | null;
   setGlassAccent: (color: string | null) => void;
+  backgroundConfig: BackgroundConfig;
+  setBackgroundConfig: (config: BackgroundConfig) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -34,7 +37,7 @@ const BG_TYPE_STORAGE_KEY = "dominion-background-type";
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingData: Record<string, unknown> = {};
 
-function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string; textPrimary?: string | null; textSecondary?: string | null; glassAccent?: string | null }, immediate = false) {
+function persistToDb(data: { theme?: string; background?: string | null; backgroundType?: string; textPrimary?: string | null; textSecondary?: string | null; glassAccent?: string | null; backgroundConfig?: string | null }, immediate = false) {
   // Merge with any pending data
   pendingData = { ...pendingData, ...data };
 
@@ -64,6 +67,7 @@ export function ThemeProvider({
   defaultTextPrimary = null as string | null,
   defaultTextSecondary = null as string | null,
   defaultGlassAccent = null as string | null,
+  defaultBackgroundConfig = null as string | null,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
@@ -74,6 +78,7 @@ export function ThemeProvider({
   defaultTextPrimary?: string | null;
   defaultTextSecondary?: string | null;
   defaultGlassAccent?: string | null;
+  defaultBackgroundConfig?: string | null;
 }) {
   // DB values come as props (server-rendered). Use them as initial state.
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
@@ -82,6 +87,10 @@ export function ThemeProvider({
   const [textPrimary, setTextPrimaryState] = useState<string | null>(defaultTextPrimary ?? null);
   const [textSecondary, setTextSecondaryState] = useState<string | null>(defaultTextSecondary ?? null);
   const [glassAccent, setGlassAccentState] = useState<string | null>(defaultGlassAccent ?? null);
+  const [backgroundConfig, setBackgroundConfigState] = useState<BackgroundConfig>(() => {
+    try { return defaultBackgroundConfig ? JSON.parse(defaultBackgroundConfig) : {}; }
+    catch { return {}; }
+  });
   const [mounted, setMounted] = useState(false);
 
   const dbLoaded = useRef(dbSettingsLoaded);
@@ -209,8 +218,13 @@ export function ThemeProvider({
     persistToDb({ glassAccent: color });
   }, []);
 
+  const setBackgroundConfig = useCallback((config: BackgroundConfig) => {
+    setBackgroundConfigState(config);
+    persistToDb({ backgroundConfig: JSON.stringify(config) });
+  }, []);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, background, setBackground, backgroundType, setBackgroundType, textPrimary, setTextPrimary, textSecondary, setTextSecondary, glassAccent, setGlassAccent }}>
+    <ThemeContext.Provider value={{ theme, setTheme, background, setBackground, backgroundType, setBackgroundType, textPrimary, setTextPrimary, textSecondary, setTextSecondary, glassAccent, setGlassAccent, backgroundConfig, setBackgroundConfig }}>
       {mounted ? children : <div style={{ visibility: "hidden" }}>{children}</div>}
     </ThemeContext.Provider>
   );
