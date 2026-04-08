@@ -82,7 +82,6 @@ export async function createTile(data: {
   enhancedConfig?: string;
   columnSpan?: number;
   rowSpan?: number;
-  groupId?: number | null;
   subDashboardId?: number | null;
   userId?: number;
   appConnectionId?: number | null;
@@ -122,7 +121,6 @@ export async function createTile(data: {
       enhancedConfig: encryptedConfig,
       columnSpan: data.columnSpan ?? 1,
       rowSpan: data.rowSpan ?? 1,
-      groupId: data.groupId ?? null,
       subDashboardId: data.subDashboardId ?? null,
       appConnectionId: data.appConnectionId ?? null,
       order: (maxOrder._max.order ?? 0) + 1,
@@ -149,7 +147,6 @@ export async function updateTile(
     columnSpan?: number;
     rowSpan?: number;
     pinned?: boolean;
-    groupId?: number | null;
     appConnectionId?: number | null;
   }
 ) {
@@ -252,7 +249,6 @@ export async function createEnhancedTileWithConnection(data: {
   enhancedConfig?: string; // Full config JSON (will be split)
   columnSpan?: number;
   rowSpan?: number;
-  groupId?: number | null;
   subDashboardId?: number | null;
   appConnectionId?: number | null;
 }) {
