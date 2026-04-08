@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { GROUP_ICON_MAP } from "./GroupTile";
+import { useSortable } from "@dnd-kit/react/sortable";
 
 interface GroupContainerProps {
+  index: number;
   group: {
     id: number;
     title: string;
@@ -36,6 +38,7 @@ interface GroupContainerProps {
 }
 
 export function GroupContainer({
+  index,
   group,
   tiles,
   gridColumns = 6,
@@ -50,6 +53,13 @@ export function GroupContainer({
 }: GroupContainerProps) {
   const { editMode } = useEditMode();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const { ref, isDragging } = useSortable({
+    id: group.id,
+    index,
+    group: "groups",
+    disabled: !editMode,
+  });
   // Local collapsed state as fallback when no external handler is provided
   const [localCollapsed, setLocalCollapsed] = useState(group.collapsed);
   const isCollapsed = onToggleCollapsed ? group.collapsed : localCollapsed;
@@ -66,7 +76,8 @@ export function GroupContainer({
 
   return (
     <div
-      className="glass-card overflow-hidden border-l-4"
+      ref={ref}
+      className={cn("glass-card overflow-hidden border-l-4", isDragging && "opacity-50")}
       style={{ borderLeftColor: group.color }}
     >
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -79,8 +90,8 @@ export function GroupContainer({
           "hover:bg-white/[0.04]"
         )}
       >
-        {/* Drag handle (visual only for now) */}
-        <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground/40 cursor-grab" />
+        {/* Drag handle */}
+        <GripVertical className={cn("h-4 w-4 flex-shrink-0 cursor-grab", editMode ? "text-muted-foreground/70" : "text-muted-foreground/40")} />
 
         {/* Group icon with color tint */}
         <div

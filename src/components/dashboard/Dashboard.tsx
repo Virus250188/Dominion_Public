@@ -9,6 +9,7 @@ import { GroupContainer } from "./GroupContainer";
 import { GroupDialog } from "./GroupDialog";
 import { SubDashboardTile, type SubDashboardData } from "./SubDashboardTile";
 import { SubDashboardDialog } from "./SubDashboardDialog";
+import { DragDropProvider } from "@dnd-kit/react";
 import { createTile, updateTile, deleteTile, reorderTiles, togglePinTile, createEnhancedTileWithConnection } from "@/lib/actions/tiles";
 import {
   createGroup,
@@ -17,6 +18,7 @@ import {
   assignTileToGroup,
   assignTilesToGroup,
   toggleGroupCollapsed,
+  reorderGroups,
 } from "@/lib/actions/groups";
 import {
   createSubDashboard,
@@ -561,6 +563,41 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
     order: g.order,
   }));
 
+  const handleGroupDragEnd = useCallback(
+    (event: { operation: { source: { id: string | number } | null; target: { id: string | number } | null }; canceled: boolean }) => {
+      if (event.canceled) return;
+
+      const { source, target } = event.operation;
+      if (!source || !target) return;
+
+      const sourceId = source.id;
+      const targetId = target.id;
+      if (sourceId === targetId) return;
+
+      setGroupsWithTiles((prev) => {
+        const fromIndex = prev.findIndex((g) => g.id === sourceId);
+        const toIndex = prev.findIndex((g) => g.id === targetId);
+        if (fromIndex === -1 || toIndex === -1) return prev;
+
+        const next = [...prev];
+        const [item] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, item);
+
+        // Fire-and-forget server action
+        startTransition(async () => {
+          try {
+            await reorderGroups(next.map((g) => g.id));
+          } catch {
+            toast.error("Gruppen-Reihenfolge konnte nicht gespeichert werden");
+          }
+        });
+
+        return next;
+      });
+    },
+    [],
+  );
+
   return (
     <>
       {/* Main tile grid with ungrouped tiles only */}
@@ -596,30 +633,33 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
             <div className="h-px flex-1 bg-border/50" />
           </div>
 
-          <div className="flex flex-col gap-4">
-            {groupsWithTiles.map((group) => (
-              <GroupContainer
-                key={group.id}
-                group={group}
-                tiles={group.tiles}
-                gridColumns={gridColumns}
-                onEditGroup={(g) => {
-                  handleEditGroup({
-                    ...g,
-                    order: group.order,
-                    tileCount: group.tiles.length,
-                  });
-                }}
-                onDeleteGroup={handleDeleteGroup}
-                onEditTile={handleEdit}
-                onDeleteTile={handleDelete}
-                onTogglePin={handleTogglePin}
-                onToggleCollapsed={handleToggleCollapsed}
-                groups={groupDataForDialog}
-                onMoveToGroup={handleMoveToGroup}
-              />
-            ))}
-          </div>
+          <DragDropProvider onDragEnd={handleGroupDragEnd}>
+            <div className="flex flex-col gap-4">
+              {groupsWithTiles.map((group, index) => (
+                <GroupContainer
+                  key={group.id}
+                  index={index}
+                  group={group}
+                  tiles={group.tiles}
+                  gridColumns={gridColumns}
+                  onEditGroup={(g) => {
+                    handleEditGroup({
+                      ...g,
+                      order: group.order,
+                      tileCount: group.tiles.length,
+                    });
+                  }}
+                  onDeleteGroup={handleDeleteGroup}
+                  onEditTile={handleEdit}
+                  onDeleteTile={handleDelete}
+                  onTogglePin={handleTogglePin}
+                  onToggleCollapsed={handleToggleCollapsed}
+                  groups={groupDataForDialog}
+                  onMoveToGroup={handleMoveToGroup}
+                />
+              ))}
+            </div>
+          </DragDropProvider>
         </>
       )}
 
