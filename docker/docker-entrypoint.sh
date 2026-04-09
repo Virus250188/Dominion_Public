@@ -6,8 +6,9 @@ echo "  Dominion Dashboard"
 echo "  Starting up..."
 echo "================================================"
 
-# ── Ensure upload directory exists ───────────────────────────────────────────
+# ── Ensure data directories exist ────────────────────────────────────────────
 mkdir -p /data/uploads
+mkdir -p /data/plugins
 
 # ── Database migrations ──────────────────────────────────────────────────────
 echo "[dominion] Running database migrations..."

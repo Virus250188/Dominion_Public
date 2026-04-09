@@ -40,9 +40,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY docker/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 
-# Data directory for SQLite + writable community plugins directory
+# Data directory for SQLite + persistent community plugins
 RUN mkdir -p /data && chown nextjs:nodejs /data
-RUN mkdir -p /app/src/plugins/community && chown -R nextjs:nodejs /app/src/plugins/community
+RUN mkdir -p /data/plugins && chown nextjs:nodejs /data/plugins
+RUN rm -rf /app/src/plugins/community && ln -s /data/plugins /app/src/plugins/community
 VOLUME /data
 
 ENV DATABASE_URL="file:/data/dominion.db"
