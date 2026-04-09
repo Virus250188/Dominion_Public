@@ -8,6 +8,52 @@ import { generateApiKey } from "@/lib/notifications/keys";
 
 const SETTINGS_PATH = "/settings/notifications";
 
+// ─── SSRF protection for RSS feeds ─────────────────────────────────────────
+
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost",
+  "metadata.google.internal",
+  "metadata.internal",
+]);
+
+function isRssUrlBlocked(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return true;
+    if (BLOCKED_HOSTNAMES.has(url.hostname.toLowerCase())) return true;
+    if (url.hostname === "127.0.0.1" || url.hostname === "::1" || url.hostname === "0.0.0.0") return true;
+    if (url.hostname.startsWith("169.254.")) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+async function validateRssFeed(url: string): Promise<{ ok: boolean; error?: string }> {
+  if (isRssUrlBlocked(url)) {
+    return { ok: false, error: "Diese URL ist nicht erlaubt" };
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Dominion-Dashboard/1.0 RSS-Validator" },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      return { ok: false, error: `Feed nicht erreichbar (HTTP ${res.status})` };
+    }
+    const text = await res.text();
+    if (!text.includes("<rss") && !text.includes("<feed") && !text.includes("<channel")) {
+      return { ok: false, error: "URL liefert keinen gültigen RSS/Atom Feed" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Feed nicht erreichbar — URL prüfen" };
+  }
+}
+
 // ─── Acknowledge ────────────────────────────────────────────────────────────
 
 export async function acknowledgeNotification(id: number) {
@@ -65,6 +111,14 @@ export async function createNotificationSource(data: {
   `;
   if (duplicates.length > 0) {
     return { error: "Dieser Name ist bereits vergeben" };
+  }
+
+  // Validate RSS feed URL before creating
+  if (data.type === "rss" && data.rssUrl) {
+    const feedCheck = await validateRssFeed(data.rssUrl);
+    if (!feedCheck.ok) {
+      return { error: feedCheck.error ?? "Feed nicht erreichbar" };
+    }
   }
 
   const plainKey = data.type === "rss" ? null : generateApiKey();
