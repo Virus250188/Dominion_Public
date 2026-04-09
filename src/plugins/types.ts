@@ -122,6 +122,7 @@ export interface AppPlugin {
     refreshToken?: string;
     expiresAt?: number;
   }>;
+  supportsNotifications?: boolean;
 }
 
 // ─── Backward Compatibility ────────────────────────────────────────────────
