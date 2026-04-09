@@ -51,8 +51,20 @@ export async function createNotificationSource(data: {
   rssUrl?: string;
   rssInterval?: number;
   rateLimit?: number;
+  appConnectionId?: number;
 }) {
   const userId = await requireUserId();
+
+  // Check name uniqueness (case-insensitive) via raw SQL — SQLite doesn't support mode:"insensitive"
+  const duplicates = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM "NotificationSource"
+    WHERE "userId" = ${userId}
+      AND LOWER("name") = LOWER(${data.name})
+    LIMIT 1
+  `;
+  if (duplicates.length > 0) {
+    return { error: "Dieser Name ist bereits vergeben" };
+  }
 
   const plainKey = generateApiKey();
   const encryptedKey = encrypt(plainKey);
@@ -63,17 +75,17 @@ export async function createNotificationSource(data: {
       sourceId: data.sourceId,
       name: data.name,
       type: data.type,
-      icon: data.icon ?? null,
-      color: data.color ?? "#6366f1",
+      icon: data.icon || null,
+      color: data.color || "#6366f1",
       apiKey: encryptedKey,
-      rssUrl: data.rssUrl ?? null,
-      rssInterval: data.rssInterval ?? null,
-      rateLimit: data.rateLimit ?? 60,
+      rssUrl: data.rssUrl || null,
+      rssInterval: data.rssInterval || null,
+      rateLimit: data.rateLimit || 60,
+      appConnectionId: data.appConnectionId || null,
     },
   });
 
   revalidatePath(SETTINGS_PATH);
-
   return { ...source, apiKey: plainKey };
 }
 
