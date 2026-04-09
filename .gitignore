@@ -92,3 +92,6 @@ docs/superpowers/
 
 # Superpowers development sessions (root-level)
 /.superpowers/
+
+# Git worktrees
+.worktrees/
