@@ -29,7 +29,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: ["127.0.0.1"],
-  serverExternalPackages: ["@prisma/client", "better-sqlite3", "@prisma/adapter-better-sqlite3", "adm-zip"],
+  serverExternalPackages: ["@prisma/client", "better-sqlite3", "@prisma/adapter-better-sqlite3", "adm-zip", "rss-parser"],
   env: {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
   },

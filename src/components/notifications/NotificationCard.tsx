@@ -10,7 +10,7 @@ interface NotificationCardProps {
   notification: Notification & {
     source?: { name: string; icon: string | null; color: string; sourceId: string };
   };
-  onAcknowledge: (id: number) => void;
+  onAcknowledge: (id: number) => void | Promise<void>;
 }
 
 // ─── Category styling ───────────────────────────────────────────────────────

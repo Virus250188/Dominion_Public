@@ -5,6 +5,26 @@
 import type { AppPlugin } from "../types";
 import type { ComponentType } from "react";
 
-export const communityPlugins: AppPlugin[] = [];
+import { plugin as homeAssistantPlugin } from "./home-assistant";
+import { plugin as truenasPlugin } from "./truenas";
+import { widget as homeAssistantWidget, widgetName as homeAssistantWidgetName } from "./home-assistant";
+import { widget as truenasWidget, widgetName as truenasWidgetName } from "./truenas";
+
+export const communityPlugins: AppPlugin[] = [
+  homeAssistantPlugin,
+  truenasPlugin,
+];
+
+// Build widget map from plugins that export a widget + widgetName.
+// Entries with null widget/widgetName are filtered out at runtime.
+const _widgets: [string | null, ComponentType<unknown> | null][] = [
+  [homeAssistantWidgetName, homeAssistantWidget as ComponentType<unknown> | null],
+  [truenasWidgetName, truenasWidget as ComponentType<unknown> | null],
+];
 
 export const communityWidgets: Record<string, ComponentType<unknown>> = {};
+for (const [name, component] of _widgets) {
+  if (name && component) {
+    communityWidgets[name] = component;
+  }
+}

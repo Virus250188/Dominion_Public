@@ -29,7 +29,8 @@ const NotificationPanelContext = createContext<NotificationPanelContextValue>({
 });
 
 function isExpired(notification: Notification): boolean {
-  return notification.expiresAt !== undefined && notification.expiresAt < new Date();
+  if (!notification.expiresAt) return false;
+  return notification.expiresAt < new Date();
 }
 
 export function NotificationPanelProvider({ children }: { children: ReactNode }) {
@@ -50,35 +51,42 @@ export function NotificationPanelProvider({ children }: { children: ReactNode })
   }, []);
 
   useEffect(() => {
-    const service = new NotificationService();
-    serviceRef.current = service;
+    let service: NotificationService | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    // Fetch existing unacknowledged notifications
-    service.fetchNotifications().then((fetched) => {
-      setNotifications(fetched.filter((n) => !isExpired(n)));
-    }).catch(() => {});
+    try {
+      service = new NotificationService();
+      serviceRef.current = service;
 
-    // Subscribe to real-time SSE notifications
-    service.connect((notification) => {
-      if (!isExpired(notification)) {
-        setNotifications((prev) => {
-          // Avoid duplicates by id
-          const exists = prev.some((n) => n.id === notification.id);
-          return exists ? prev : [notification, ...prev];
-        });
-      }
-    });
+      // Fetch existing unacknowledged notifications
+      service.fetchNotifications().then((fetched) => {
+        setNotifications(fetched.filter((n) => !isExpired(n)));
+      }).catch(() => {});
 
-    // Auto-poll RSS feeds every 5 minutes while the dashboard is open
-    fetch("/api/notifications/rss-poll").catch(() => {});
-    const pollInterval = setInterval(() => {
+      // Subscribe to real-time SSE notifications
+      service.connect((notification) => {
+        if (!isExpired(notification)) {
+          setNotifications((prev) => {
+            // Avoid duplicates by id
+            const exists = prev.some((n) => n.id === notification.id);
+            return exists ? prev : [notification, ...prev];
+          });
+        }
+      });
+
+      // Auto-poll RSS feeds every 5 minutes while the dashboard is open
       fetch("/api/notifications/rss-poll").catch(() => {});
-    }, 5 * 60 * 1000);
+      pollInterval = setInterval(() => {
+        fetch("/api/notifications/rss-poll").catch(() => {});
+      }, 5 * 60 * 1000);
+    } catch (err) {
+      console.error("[NotificationPanel] Init failed:", err);
+    }
 
     return () => {
-      service.disconnect();
+      try { service?.disconnect(); } catch {}
       serviceRef.current = null;
-      clearInterval(pollInterval);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, []);
 
