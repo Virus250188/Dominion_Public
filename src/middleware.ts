@@ -47,8 +47,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Public routes
-  const publicRoutes = ["/login", "/setup", "/api/auth", "/api/enhanced/oauth", "/api/notifications"];
+  // Exact match for external notification ingestion (API key auth)
+  if (pathname === "/api/notifications") {
+    return NextResponse.next();
+  }
+
+  // Public routes (prefix match)
+  const publicRoutes = ["/login", "/setup", "/api/auth", "/api/enhanced/oauth"];
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }

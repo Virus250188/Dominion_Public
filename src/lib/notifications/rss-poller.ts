@@ -8,6 +8,25 @@ import prisma from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { sseManager } from "@/lib/notifications/sse-manager";
 
+// ─── SSRF protection ──────────────────────────────────────────────────────────
+
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost", "metadata.google.internal", "metadata.internal",
+]);
+
+function isUrlBlocked(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return true;
+    if (BLOCKED_HOSTNAMES.has(url.hostname.toLowerCase())) return true;
+    if (url.hostname === "127.0.0.1" || url.hostname === "::1" || url.hostname === "0.0.0.0") return true;
+    if (url.hostname.startsWith("169.254.")) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 const MAX_MESSAGE_LENGTH = 2000;
 
 interface PollResult {
@@ -98,6 +117,17 @@ async function pollSingleFeed(
   now: Date
 ): Promise<PollResult> {
   const url = source.rssUrl!;
+
+  if (isUrlBlocked(url)) {
+    logger.warn("rss-poller", `SSRF protection: blocked poll for ${source.name}`, { url });
+    return {
+      sourceId: source.id,
+      sourceName: source.name,
+      status: "error" as const,
+      newNotifications: 0,
+      error: "URL blocked by SSRF protection",
+    };
+  }
 
   try {
     const feed = await parser.parseURL(url);

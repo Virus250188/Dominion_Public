@@ -108,6 +108,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (url && typeof url === "string" && !url.startsWith("http://") && !url.startsWith("https://")) {
+      return NextResponse.json(
+        { error: "Invalid URL — must start with http:// or https://" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof priority === "number" && (priority < 0 || priority > 3)) {
+      return NextResponse.json(
+        { error: "Priority must be between 0 and 3" },
+        { status: 400 }
+      );
+    }
+
     if (expiresAt) {
       const parsed = new Date(expiresAt as string);
       if (isNaN(parsed.getTime())) {

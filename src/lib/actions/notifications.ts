@@ -168,6 +168,14 @@ export async function updateNotificationSource(
     throw new Error("NotificationSource not found or access denied");
   }
 
+  // Validate RSS URL if it's being changed
+  if (data.rssUrl !== undefined) {
+    const feedCheck = await validateRssFeed(data.rssUrl);
+    if (!feedCheck.ok) {
+      return { error: feedCheck.error ?? "Feed nicht erreichbar" };
+    }
+  }
+
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.icon !== undefined) updateData.icon = data.icon;
