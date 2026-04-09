@@ -56,7 +56,7 @@ export function NotificationPanelProvider({ children }: { children: ReactNode })
     // Fetch existing unacknowledged notifications
     service.fetchNotifications().then((fetched) => {
       setNotifications(fetched.filter((n) => !isExpired(n)));
-    });
+    }).catch(() => {});
 
     // Subscribe to real-time SSE notifications
     service.connect((notification) => {

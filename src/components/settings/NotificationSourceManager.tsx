@@ -302,7 +302,7 @@ export function NotificationSourceManager({ initialSources }: Props) {
         <div className="glass-card p-6 space-y-3">
           <Label className="text-sm font-medium">Rate Limit</Label>
           <p className="text-xs text-muted-foreground">
-            Maximale Benachrichtigungen pro Minute
+            Maximale Benachrichtigungen pro Stunde
           </p>
           <div className="flex items-center gap-2">
             <Input
@@ -312,7 +312,7 @@ export function NotificationSourceManager({ initialSources }: Props) {
               onChange={(e) => setEditRateLimit(e.target.value)}
               className="w-24"
             />
-            <span className="text-sm text-muted-foreground">pro Minute</span>
+            <span className="text-sm text-muted-foreground">pro Stunde</span>
             <Button
               variant="outline"
               size="sm"

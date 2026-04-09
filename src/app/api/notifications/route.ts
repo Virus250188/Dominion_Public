@@ -132,7 +132,11 @@ export async function POST(request: NextRequest) {
         icon: (icon as string | undefined) ?? null,
         expiresAt: expiresAt ? new Date(expiresAt as string) : null,
       },
-      include: { source: true },
+      include: {
+        source: {
+          select: { name: true, icon: true, color: true, sourceId: true },
+        },
+      },
     });
 
     // Broadcast via SSE
