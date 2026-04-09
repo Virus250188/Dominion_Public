@@ -185,8 +185,9 @@ model AppConnection {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tiles Tile[]
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tiles               Tile[]
+  notificationSources NotificationSource[]
 
   @@index([userId])
   @@index([pluginType])
@@ -206,12 +207,15 @@ model NotificationSource {
   rssInterval   Int?
   rssLastFetch  DateTime?
   rateLimit     Int       @default(60)
+  appConnectionId Int?
+  appConnection   AppConnection? @relation(fields: [appConnectionId], references: [id], onDelete: SetNull)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   notifications Notification[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@unique([userId, sourceId])
+  @@unique([userId, name])
   @@index([userId])
 }
 
