@@ -48,7 +48,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Public routes
-  const publicRoutes = ["/login", "/setup", "/api/auth", "/api/enhanced/oauth"];
+  const publicRoutes = ["/login", "/setup", "/api/auth", "/api/enhanced/oauth", "/api/notifications"];
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
