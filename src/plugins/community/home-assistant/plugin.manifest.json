@@ -1,0 +1,10 @@
+{
+  "id": "home-assistant",
+  "name": "Home Assistant",
+  "version": "1.2.0",
+  "author": "Miguel",
+  "description": "Zeigt beliebige Home Assistant Entities an (Sensoren, Lichter, Schalter, Klima und mehr)",
+  "minDashboardVersion": "1.0.7",
+  "hasWidget": true,
+  "widgetFile": "HomeAssistantWidget.tsx"
+}
