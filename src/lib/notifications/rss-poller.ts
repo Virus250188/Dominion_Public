@@ -92,6 +92,7 @@ async function pollSingleFeed(
     name: string;
     rssUrl: string | null;
     rssLastFetch: Date | null;
+    createdAt: Date;
     defaultCategory: string | null;
   },
   now: Date
@@ -102,11 +103,11 @@ async function pollSingleFeed(
     const feed = await parser.parseURL(url);
     const items = feed.items ?? [];
 
-    // Determine cutoff: skip items published before last fetch
-    const cutoff = source.rssLastFetch;
+    // Determine cutoff: on first poll use source creation date to avoid importing old items
+    const cutoff = source.rssLastFetch ?? source.createdAt;
 
     const newItems = items.filter((item) => {
-      if (!cutoff) return true; // First fetch — accept all
+      if (!cutoff) return true; // Safety fallback
       const pubDate = item.pubDate
         ? new Date(item.pubDate)
         : item.isoDate

@@ -208,10 +208,12 @@ export function NotificationSourceManager({
   const handleDelete = () => {
     if (!deleteConfirm) return;
     const id = deleteConfirm.id;
+    // Optimistic: remove from UI immediately
+    setSources((prev) => prev.filter((s) => s.id !== id));
+    setDeleteConfirm(null);
+    setSelectedId(null);
     startTransition(async () => {
       await deleteNotificationSource(id);
-      setDeleteConfirm(null);
-      setSelectedId(null);
       router.refresh();
     });
   };
@@ -362,7 +364,8 @@ export function NotificationSourceManager({
           </div>
         </div>
 
-        {/* API Key */}
+        {/* API Key — only for app sources, RSS feeds don't use API keys */}
+        {selected.type !== "rss" && (
         <div className="glass-card p-6 space-y-3">
           <Label className="text-sm font-medium">API-Schluessel</Label>
           <div className="flex items-center gap-2">
@@ -402,6 +405,7 @@ export function NotificationSourceManager({
             Der alte Schluessel wird sofort ungueltig.
           </p>
         </div>
+        )}
 
         {/* Rate Limit */}
         <div className="glass-card p-6 space-y-3">

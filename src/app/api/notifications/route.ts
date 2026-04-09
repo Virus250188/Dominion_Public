@@ -183,6 +183,7 @@ export async function GET() {
         },
       },
       orderBy: { receivedAt: "desc" },
+      take: 20,
     });
 
     return NextResponse.json(notifications);

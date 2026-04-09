@@ -67,8 +67,8 @@ export async function createNotificationSource(data: {
     return { error: "Dieser Name ist bereits vergeben" };
   }
 
-  const plainKey = generateApiKey();
-  const encryptedKey = encrypt(plainKey);
+  const plainKey = data.type === "rss" ? null : generateApiKey();
+  const encryptedKey = plainKey ? encrypt(plainKey) : "";
 
   const source = await prisma.notificationSource.create({
     data: {
@@ -88,7 +88,7 @@ export async function createNotificationSource(data: {
   });
 
   revalidatePath(SETTINGS_PATH);
-  return { ...source, apiKey: plainKey };
+  return { ...source, apiKey: plainKey || "" };
 }
 
 // ─── Update Source ──────────────────────────────────────────────────────────
