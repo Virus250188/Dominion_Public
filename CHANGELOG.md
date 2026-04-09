@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.3.0-beta (2026-04-09)
+
+### Added
+- **Notification Panel** — real-time notification sidebar with SSE streaming, badge counter, collapsible panel
+- **Notification Sources** — multi-step wizard to create RSS feeds, API key sources, or connect Enhanced Apps
+- **RSS Feed Poller** — automatic polling with configurable intervals (5/15/30/60 min), per-feed category
+- **API Key Management** — generate keys for external services (N8N, scripts), curl example on creation
+- **Settings Page** — full source management (create, edit, delete, enable/disable, key regeneration)
+- **Critical Pulse** — critical notifications glow with inset red pulse animation
+- **App Connect Framework** — `supportsNotifications` flag for plugins, AppConnection linking ready
+
+### Security
+- SSRF protection on RSS feeds (blocked: localhost, metadata endpoints, link-local IPs)
+- Feed URL validation at creation, update, and poll time (triple-check)
+- Middleware scoped: only POST `/api/notifications` is public (API key auth), sub-routes require session
+- Input validation: URL scheme check, priority bounds, payload length limits
+- API keys encrypted at rest (AES-256-GCM)
+- Rate limiting per source (configurable, default 60/hour)
+
+### Fixed
+- Notification panel no longer crashes on init failure (defensive try-catch)
+- `isExpired()` handles both null and undefined correctly
+- RSS poller only imports items from source creation date onwards (no old flood)
+- Panel limited to 20 newest notifications
+- Source deletion is instant (optimistic UI)
+- "Mehr anzeigen" uses DOM-based truncation detection (works at any panel width)
+
+---
+
 ## v1.0.10-alpha (2026-04-07)
 
 ### Added
