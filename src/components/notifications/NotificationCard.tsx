@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Check } from "lucide-react";
 import { type Notification } from "@/lib/notifications/types";
 
@@ -73,9 +73,17 @@ function relativeTime(date: Date): string {
 export function NotificationCard({ notification, onAcknowledge }: NotificationCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [acknowledging, setAcknowledging] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const messageRef = useRef<HTMLParagraphElement>(null);
 
   const style = categoryStyles[notification.category] ?? categoryStyles.info;
-  const hasLongMessage = (notification.message?.length ?? 0) > 120;
+
+  useEffect(() => {
+    const el = messageRef.current;
+    if (el && !expanded) {
+      setIsTruncated(el.scrollHeight > el.clientHeight);
+    }
+  }, [expanded, notification.message]);
 
   const handleAcknowledge = useCallback(async () => {
     if (acknowledging) return;
@@ -144,12 +152,13 @@ export function NotificationCard({ notification, onAcknowledge }: NotificationCa
         {notification.message && (
           <div className="mt-1">
             <p
+              ref={messageRef}
               className={`text-xs text-muted-foreground ${!expanded ? "line-clamp-2" : ""}`}
               style={expanded ? { maxHeight: 150, overflowY: "auto" } : undefined}
             >
               {notification.message}
             </p>
-            {hasLongMessage && (
+            {(isTruncated || expanded) && (
               <button
                 onClick={() => setExpanded((v) => !v)}
                 className="mt-0.5 text-[11px] font-medium text-primary hover:underline"
