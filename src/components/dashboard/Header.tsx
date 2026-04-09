@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useNotificationPanel } from "@/contexts/NotificationPanelContext";
+import { NotificationBadge } from "@/components/notifications/NotificationBadge";
 
 function EditModeToggle() {
   const { editMode, toggleEditMode } = useEditMode();
@@ -127,11 +128,7 @@ export function Header({ searchBar, aiConfigured = false, aiProvider = "", aiMod
             title={panelCollapsed ? "Benachrichtigungen anzeigen" : "Benachrichtigungen"}
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
-            {notificationCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
-                {notificationCount}
-              </span>
-            )}
+            <NotificationBadge count={notificationCount} />
           </button>
           <button
             onClick={aiConfigured ? () => setChatOpen((v) => !v) : undefined}

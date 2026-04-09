@@ -17,11 +17,13 @@ model User {
   isPublic       Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  tiles          Tile[]
-  settings       UserSettings?
-  groups         TileGroup[]
-  subDashboards  SubDashboard[]
-  appConnections AppConnection[]
+  tiles                Tile[]
+  settings             UserSettings?
+  groups               TileGroup[]
+  subDashboards        SubDashboard[]
+  appConnections       AppConnection[]
+  notificationSources  NotificationSource[]
+  notifications        Notification[]
 }
 
 model Tile {
@@ -188,4 +190,48 @@ model AppConnection {
 
   @@index([userId])
   @@index([pluginType])
+}
+
+model NotificationSource {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  sourceId      String
+  name          String
+  type          String
+  icon          String?
+  color         String    @default("#6366f1")
+  enabled       Boolean   @default(true)
+  apiKey        String
+  rssUrl        String?
+  rssInterval   Int?
+  rssLastFetch  DateTime?
+  rateLimit     Int       @default(60)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, sourceId])
+  @@index([userId])
+}
+
+model Notification {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  sourceId     Int
+  title        String
+  message      String?
+  category     String
+  tag          String?
+  priority     Int       @default(1)
+  url          String?
+  icon         String?
+  acknowledged Boolean   @default(false)
+  receivedAt   DateTime  @default(now())
+  expiresAt    DateTime?
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source       NotificationSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sourceId])
 }

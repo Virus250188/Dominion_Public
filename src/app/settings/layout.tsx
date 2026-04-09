@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Palette, AppWindow, Package, Database, ArrowLeft, Sparkles } from "lucide-react";
+import { Palette, AppWindow, Package, Database, ArrowLeft, Sparkles, Bell } from "lucide-react";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +38,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         >
           <Package className="h-4 w-4" />
           Community Apps
+        </Link>
+        <Link
+          href="/settings/notifications"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors"
+        >
+          <Bell className="h-4 w-4" />
+          Benachrichtigungen
         </Link>
         <Link
           href="/settings/system"
