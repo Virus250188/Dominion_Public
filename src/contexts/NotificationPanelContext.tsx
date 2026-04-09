@@ -69,9 +69,16 @@ export function NotificationPanelProvider({ children }: { children: ReactNode })
       }
     });
 
+    // Auto-poll RSS feeds every 5 minutes while the dashboard is open
+    fetch("/api/notifications/rss-poll").catch(() => {});
+    const pollInterval = setInterval(() => {
+      fetch("/api/notifications/rss-poll").catch(() => {});
+    }, 5 * 60 * 1000);
+
     return () => {
       service.disconnect();
       serviceRef.current = null;
+      clearInterval(pollInterval);
     };
   }, []);
 
