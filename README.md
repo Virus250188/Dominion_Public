@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://hub.docker.com/r/miguel1988/dominion"><img src="https://img.shields.io/badge/Docker_Hub-miguel1988%2Fdominion-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker Hub" /></a>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
-  <img src="https://img.shields.io/badge/Release-v1.2.0--beta-blue?style=flat-square" alt="Release v1.2.0-beta" />
+  <img src="https://img.shields.io/badge/Release-v1.3.0--beta-blue?style=flat-square" alt="Release v1.3.0-beta" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
@@ -83,10 +83,17 @@ Open **http://localhost:3000** — the setup wizard will guide you through creat
 
 <br clear="right" />
 
-### Notification Panel & Layout
+### Notification System
 
-- Collapsible notification sidebar (placeholder for upcoming notification system)
-- Responsive layout — panel collapses to header bell icon on smaller screens
+- **Real-time notifications** via Server-Sent Events (SSE)
+- **RSS Feed integration** — subscribe to feeds with configurable poll intervals
+- **API Key sources** — external services (N8N, scripts) send notifications via HTTP POST
+- **Enhanced App sources** — plugins can send notifications through existing connections
+- Multi-step wizard for source creation (RSS / API Key / App Connect)
+- 4 categories: info, warning, critical, update — critical notifications pulse red
+- Notification settings page with source management, rate limiting, key regeneration
+- SSRF protection on RSS feeds (blocked: localhost, metadata endpoints, link-local IPs)
+- Collapsible sidebar panel — collapses to header bell icon on smaller screens
 - Bidirectional resize handles for precise dashboard width control
 - Dashboard automatically uses full width when notification panel is collapsed
 
@@ -231,7 +238,7 @@ Open **http://localhost:3000** — default login: `admin` / `admin123`
 
 - [ ] More Enhanced App plugins (Proxmox, Plex, Jellyfin, Pi-hole, ...)
 - [ ] Multi-user support with role-based access
-- [ ] Notification system — panel ready, webhooks & push coming
+- [x] Notification system — SSE real-time, RSS feeds, API key sources, settings UI
 - [ ] Public sharing / TV display mode
 
 ---
@@ -254,5 +261,5 @@ Found a bug or have an idea? [Open an issue](https://github.com/Virus250188/Domi
 
 <p align="center">
   <img src="public/logo-trimmed.png" alt="Dominion" width="40" /><br />
-  <sub>AI-assisted development · Fast-iterating alpha · Built in public</sub>
+  <sub>AI-assisted development · Fast-iterating beta · Built in public</sub>
 </p>

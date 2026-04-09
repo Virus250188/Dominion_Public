@@ -945,7 +945,71 @@ async refreshToken(config: PluginConfig) {
 
 ---
 
-## 12. Testing Your Plugin
+## 12. Notification Support (Optional)
+
+Plugins can send notifications to the dashboard's notification panel. This allows your service to alert users about events (disk warnings, download completions, sensor thresholds, etc.).
+
+### Enabling Notification Support
+
+Set the `supportsNotifications` flag in your plugin:
+
+```ts
+export const plugin: AppPlugin = {
+  metadata: { /* ... */ },
+  supportsNotifications: true,   // ← enables notification integration
+  // ...
+};
+```
+
+When this flag is set:
+- The plugin appears in **Settings > Benachrichtigungen > Neue Quelle > App verbinden**
+- Users can activate notifications for this plugin using their existing AppConnection (no re-entering credentials)
+- A `NotificationSource` is created automatically, linked to the AppConnection
+
+### Sending Notifications
+
+Once a user has connected your app as a notification source, your service can send notifications via HTTP POST:
+
+```bash
+curl -X POST https://dashboard.example.com/api/notifications \
+  -H "Content-Type: application/json" \
+  -H "X-Notification-Key: nk_YOUR_API_KEY" \
+  -d '{
+    "title": "Disk Warning",
+    "message": "Pool tank is at 85% capacity",
+    "category": "warning",
+    "tag": "Storage",
+    "url": "https://truenas.local/storage"
+  }'
+```
+
+### Notification Categories
+
+| Category | Use case | Panel styling |
+|----------|----------|---------------|
+| `info` | General updates, completions | Neutral |
+| `warning` | Threshold alerts, degraded states | Yellow accent |
+| `critical` | Failures, immediate action needed | Red pulse glow |
+| `update` | Version updates, new content | Blue accent |
+
+### Payload Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | Yes | Notification title (max 255 chars) |
+| `message` | string | No | Body text (max 2000 chars) |
+| `category` | string | Yes | info, warning, critical, or update |
+| `tag` | string | No | Grouping label (e.g. "Storage", "Media") |
+| `url` | string | No | Link URL (must be http/https) |
+| `priority` | number | No | 0-3, default 0 |
+
+### Rate Limiting
+
+Each notification source has a configurable rate limit (default: 60 per hour). Requests exceeding the limit receive HTTP 429.
+
+---
+
+## 13. Testing Your Plugin
 
 ### Option A: Manual placement (development)
 
@@ -984,7 +1048,7 @@ async refreshToken(config: PluginConfig) {
 
 ---
 
-## 13. Available Utilities
+## 14. Available Utilities
 
 Import from `../../utils` (or `@/plugins/utils` from builtin plugins):
 
