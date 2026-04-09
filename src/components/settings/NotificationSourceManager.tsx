@@ -33,6 +33,9 @@ import {
   Check,
   Rss,
   AppWindow,
+  Key,
+  Link,
+  AlertCircle,
 } from "lucide-react";
 import {
   createNotificationSource,
@@ -41,6 +44,7 @@ import {
   regenerateApiKey,
 } from "@/lib/actions/notifications";
 import { PRESET_COLORS } from "@/lib/constants";
+import { IconPicker } from "@/components/dashboard/IconPicker";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -62,8 +66,19 @@ export interface NotificationSourceItem {
 
 type FilterTab = "all" | "active" | "paused";
 
-interface Props {
+interface AppConnectionInfo {
+  id: number;
+  name: string;
+  pluginType: string;
+  icon: string | null;
+  color: string | null;
+  url: string | null;
+}
+
+interface NotificationSourceManagerProps {
   initialSources: NotificationSourceItem[];
+  appConnections?: AppConnectionInfo[];
+  registeredAppConnectionIds?: number[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -83,7 +98,11 @@ function formatDate(iso: string): string {
 
 // ─── Component ──────────────────────────────────────────────────────────
 
-export function NotificationSourceManager({ initialSources }: Props) {
+export function NotificationSourceManager({
+  initialSources,
+  appConnections = [],
+  registeredAppConnectionIds = [],
+}: NotificationSourceManagerProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -91,16 +110,26 @@ export function NotificationSourceManager({ initialSources }: Props) {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // ── Add dialog ──
-  const [addOpen, setAddOpen] = useState(false);
-  const [addSourceId, setAddSourceId] = useState("");
+  // ── Wizard state ──
+  type WizardStep = "closed" | "select-type" | "rss-form" | "app-select" | "api-key-form" | "api-key-result" | "app-connect";
+  const [wizardStep, setWizardStep] = useState<WizardStep>("closed");
+
+  // Form fields
   const [addName, setAddName] = useState("");
-  const [addType, setAddType] = useState("app");
   const [addIcon, setAddIcon] = useState("");
+  const [addIconUrl, setAddIconUrl] = useState("");
   const [addColor, setAddColor] = useState("#6366f1");
   const [addRssUrl, setAddRssUrl] = useState("");
   const [addRssInterval, setAddRssInterval] = useState("15");
-  const [addSaving, setAddSaving] = useState(false);
+  const [addRssCategory, setAddRssCategory] = useState("info");
+  const [addError, setAddError] = useState("");
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+
+  // API Key result screen
+  const [createdApiKey, setCreatedApiKey] = useState("");
+  const [createdName, setCreatedName] = useState("");
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedCurl, setCopiedCurl] = useState(false);
 
   // ── Detail state ──
   const [keyRevealed, setKeyRevealed] = useState(false);
@@ -113,7 +142,7 @@ export function NotificationSourceManager({ initialSources }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState<NotificationSourceItem | null>(null);
 
   // ── Derived ──
-  const sources = initialSources;
+  const [sources, setSources] = useState(initialSources);
   const selected = selectedId !== null ? sources.find((s) => s.id === selectedId) ?? null : null;
 
   const filteredSources = sources.filter((s) => {
@@ -182,37 +211,107 @@ export function NotificationSourceManager({ initialSources }: Props) {
     });
   };
 
-  const openAddDialog = () => {
-    setAddSourceId("");
+  function resetWizard() {
+    setWizardStep("closed");
     setAddName("");
-    setAddType("app");
     setAddIcon("");
+    setAddIconUrl("");
     setAddColor("#6366f1");
     setAddRssUrl("");
     setAddRssInterval("15");
-    setAddSaving(false);
-    setAddOpen(true);
-  };
+    setAddRssCategory("info");
+    setAddError("");
+    setCreatedApiKey("");
+    setCreatedName("");
+    setCopiedKey(false);
+    setCopiedCurl(false);
+  }
 
-  const handleAdd = async () => {
-    if (!addSourceId.trim() || !addName.trim()) return;
-    setAddSaving(true);
-    try {
-      await createNotificationSource({
-        sourceId: addSourceId.trim(),
-        name: addName.trim(),
-        type: addType,
-        icon: addIcon.trim() || undefined,
-        color: addColor,
-        rssUrl: addType === "rss" ? addRssUrl.trim() || undefined : undefined,
-        rssInterval: addType === "rss" ? parseInt(addRssInterval, 10) : undefined,
-      });
-      setAddOpen(false);
-      router.refresh();
-    } finally {
-      setAddSaving(false);
+  function slugify(text: string): string {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  async function copyToClipboard(text: string, type: "key" | "curl") {
+    await navigator.clipboard.writeText(text);
+    if (type === "key") {
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    } else {
+      setCopiedCurl(true);
+      setTimeout(() => setCopiedCurl(false), 2000);
     }
-  };
+  }
+
+  const effectiveIcon = addIconUrl || addIcon;
+
+  async function handleAddApiKey() {
+    if (!addName.trim()) { setAddError("Name ist erforderlich"); return; }
+    setAddError("");
+    startTransition(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await createNotificationSource({
+        sourceId: slugify(addName),
+        name: addName.trim(),
+        type: "app",
+        icon: effectiveIcon || undefined,
+        color: addColor,
+      });
+      if (result.error) {
+        setAddError(result.error);
+        return;
+      }
+      setCreatedApiKey(result.apiKey);
+      setCreatedName(result.name);
+      setSources((prev) => [{ ...result, createdAt: new Date().toISOString(), totalNotifications: 0 }, ...prev]);
+      setWizardStep("api-key-result");
+    });
+  }
+
+  async function handleAddRss() {
+    if (!addRssUrl.trim()) { setAddError("Feed URL ist erforderlich"); return; }
+    if (!addName.trim()) { setAddError("Anzeigename ist erforderlich"); return; }
+    setAddError("");
+    startTransition(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await createNotificationSource({
+        sourceId: slugify(addName),
+        name: addName.trim(),
+        type: "rss",
+        icon: effectiveIcon || undefined,
+        color: addColor,
+        rssUrl: addRssUrl.trim(),
+        rssInterval: parseInt(addRssInterval, 10),
+      });
+      if (result.error) {
+        setAddError(result.error);
+        return;
+      }
+      setSources((prev) => [{ ...result, createdAt: new Date().toISOString(), totalNotifications: 0 }, ...prev]);
+      resetWizard();
+      router.refresh();
+    });
+  }
+
+  async function handleConnectApp(conn: AppConnectionInfo) {
+    startTransition(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await createNotificationSource({
+        sourceId: slugify(conn.name),
+        name: conn.name,
+        type: "app",
+        icon: conn.icon || undefined,
+        color: conn.color || "#6366f1",
+        appConnectionId: conn.id,
+      });
+      if (result.error) {
+        setAddError(result.error);
+        return;
+      }
+      setSources((prev) => [{ ...result, createdAt: new Date().toISOString(), totalNotifications: 0 }, ...prev]);
+      resetWizard();
+      router.refresh();
+    });
+  }
 
   // ─── Detail View ──────────────────────────────────────────────────────
 
@@ -393,8 +492,8 @@ export function NotificationSourceManager({ initialSources }: Props) {
             {sources.length} Quelle{sources.length !== 1 ? "n" : ""}
           </span>
         </div>
-        <Button size="sm" onClick={openAddDialog}>
-          <Plus className="h-4 w-4 mr-1" />
+        <Button onClick={() => setWizardStep("select-type")} size="sm">
+          <Plus className="mr-2 h-4 w-4" />
           Neue Quelle
         </Button>
       </div>
@@ -485,106 +584,95 @@ export function NotificationSourceManager({ initialSources }: Props) {
         )}
       </div>
 
-      {/* ─── Add Source Dialog ─────────────────────────────────────── */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      {/* ─── Wizard Dialog ─────────────────────────────────────────── */}
+      <Dialog open={wizardStep !== "closed"} onOpenChange={(open) => { if (!open) resetWizard(); }}>
         <DialogContent className="glass-surface sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Neue Benachrichtigungsquelle</DialogTitle>
-          </DialogHeader>
 
-          <ScrollArea className="max-h-[70vh] pr-3">
-            <div className="grid gap-4 py-4">
-              {/* Source ID */}
-              <div className="space-y-1.5">
-                <Label htmlFor="add-source-id">Quell-ID</Label>
-                <Input
-                  id="add-source-id"
-                  value={addSourceId}
-                  onChange={(e) => setAddSourceId(e.target.value)}
-                  placeholder="z.B. truenas, n8n, homeassistant"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Eindeutige Kennung fuer diese Quelle
-                </p>
+          {/* ── Step: Select Type ── */}
+          {wizardStep === "select-type" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Neue Benachrichtigungsquelle</DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <button
+                  onClick={() => setWizardStep("rss-form")}
+                  className="glass-card flex flex-col items-center gap-3 rounded-xl border border-border p-6 hover:border-primary/40 transition-all cursor-pointer"
+                >
+                  <Rss className="h-10 w-10 text-primary" />
+                  <div className="text-center">
+                    <div className="font-medium text-foreground">RSS Feed</div>
+                    <div className="text-xs text-muted-foreground mt-1">Blogs, News oder Service-Feeds</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setWizardStep("app-select")}
+                  className="glass-card flex flex-col items-center gap-3 rounded-xl border border-border p-6 hover:border-primary/40 transition-all cursor-pointer"
+                >
+                  <AppWindow className="h-10 w-10 text-primary" />
+                  <div className="text-center">
+                    <div className="font-medium text-foreground">App</div>
+                    <div className="text-xs text-muted-foreground mt-1">API-Key oder App-Verbindung</div>
+                  </div>
+                </button>
               </div>
+            </>
+          )}
 
-              {/* Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="add-name">Name</Label>
-                <Input
-                  id="add-name"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  placeholder="z.B. TrueNAS Alerts"
-                />
+          {/* ── Step: App Select ── */}
+          {wizardStep === "app-select" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>App-Quelle einrichten</DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <button
+                  onClick={() => setWizardStep("api-key-form")}
+                  className="glass-card flex flex-col items-center gap-3 rounded-xl border border-border p-6 hover:border-primary/40 transition-all cursor-pointer"
+                >
+                  <Key className="h-10 w-10 text-primary" />
+                  <div className="text-center">
+                    <div className="font-medium text-foreground">API Key generieren</div>
+                    <div className="text-xs text-muted-foreground mt-1">Manuell per HTTP senden</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setWizardStep("app-connect")}
+                  className="glass-card flex flex-col items-center gap-3 rounded-xl border border-border p-6 hover:border-primary/40 transition-all cursor-pointer"
+                >
+                  <Link className="h-10 w-10 text-primary" />
+                  <div className="text-center">
+                    <div className="font-medium text-foreground">App verbinden</div>
+                    <div className="text-xs text-muted-foreground mt-1">Bestehende Verbindung nutzen</div>
+                  </div>
+                </button>
               </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setWizardStep("select-type")}>
+                  Zurueck
+                </Button>
+              </DialogFooter>
+            </>
+          )}
 
-              {/* Type */}
-              <div className="space-y-1.5">
-                <Label>Typ</Label>
-                <Select value={addType} onValueChange={(v) => v && setAddType(v)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="app">
-                      <div className="flex items-center gap-2">
-                        <AppWindow className="h-4 w-4" />
-                        App
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="rss">
-                      <div className="flex items-center gap-2">
-                        <Rss className="h-4 w-4" />
-                        RSS
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* ── Step: RSS Form ── */}
+          {wizardStep === "rss-form" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>RSS Feed hinzufuegen</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] pr-3">
+                <div className="grid gap-4 py-4">
+                  {addError && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {addError}
+                    </div>
+                  )}
 
-              {/* Icon */}
-              <div className="space-y-1.5">
-                <Label htmlFor="add-icon">Icon (optional)</Label>
-                <Input
-                  id="add-icon"
-                  value={addIcon}
-                  onChange={(e) => setAddIcon(e.target.value)}
-                  placeholder="z.B. server, bell, rss"
-                />
-              </div>
-
-              {/* Color */}
-              <div className="space-y-1.5">
-                <Label>Farbe</Label>
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_COLORS.map((c, i) => (
-                    <button
-                      key={`${c}-${i}`}
-                      aria-label={`Farbe ${c}`}
-                      className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                        addColor === c
-                          ? "border-white scale-110"
-                          : "border-transparent"
-                      }`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setAddColor(c)}
-                    />
-                  ))}
-                  <Input
-                    type="color"
-                    value={addColor}
-                    onChange={(e) => setAddColor(e.target.value)}
-                    className="h-7 w-12 cursor-pointer p-0 border-0"
-                  />
-                </div>
-              </div>
-
-              {/* RSS fields */}
-              {addType === "rss" && (
-                <>
+                  {/* Feed URL */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="add-rss-url">Feed-URL</Label>
+                    <Label htmlFor="add-rss-url">Feed URL</Label>
                     <Input
                       id="add-rss-url"
                       type="url"
@@ -593,6 +681,35 @@ export function NotificationSourceManager({ initialSources }: Props) {
                       placeholder="https://example.com/feed.xml"
                     />
                   </div>
+
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="add-name">Anzeigename</Label>
+                    <Input
+                      id="add-name"
+                      value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      placeholder="z.B. TrueNAS Blog"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1.5">
+                    <Label>Kategorie</Label>
+                    <Select value={addRssCategory} onValueChange={(v) => v && setAddRssCategory(v)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="info">Info</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="update">Update</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Interval */}
                   <div className="space-y-1.5">
                     <Label>Abfrageintervall</Label>
                     <Select value={addRssInterval} onValueChange={(v) => v && setAddRssInterval(v)}>
@@ -607,31 +724,323 @@ export function NotificationSourceManager({ initialSources }: Props) {
                       </SelectContent>
                     </Select>
                   </div>
-                </>
-              )}
-            </div>
-          </ScrollArea>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button
-              onClick={handleAdd}
-              disabled={!addSourceId.trim() || !addName.trim() || addSaving}
-            >
-              {addSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Erstelle...
-                </>
-              ) : (
-                "Erstellen"
-              )}
-            </Button>
-          </DialogFooter>
+                  {/* Icon */}
+                  <div className="space-y-1.5">
+                    <Label>Icon (optional)</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIconPickerOpen(true)}
+                        className="shrink-0"
+                      >
+                        {addIcon ? (
+                          <img src={addIcon} alt="icon" className="h-4 w-4 mr-1" />
+                        ) : (
+                          "Icon waehlen"
+                        )}
+                      </Button>
+                      <Input
+                        value={addIconUrl}
+                        onChange={(e) => { setAddIconUrl(e.target.value); setAddIcon(""); }}
+                        placeholder="oder Icon-URL eingeben"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Color */}
+                  <div className="space-y-1.5">
+                    <Label>Farbe</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {PRESET_COLORS.map((c, i) => (
+                        <button
+                          key={`${c}-${i}`}
+                          aria-label={`Farbe ${c}`}
+                          className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                            addColor === c
+                              ? "border-white scale-110"
+                              : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => setAddColor(c)}
+                        />
+                      ))}
+                      <Input
+                        type="color"
+                        value={addColor}
+                        onChange={(e) => setAddColor(e.target.value)}
+                        className="h-7 w-12 cursor-pointer p-0 border-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setAddError(""); setWizardStep("select-type"); }}>
+                  Zurueck
+                </Button>
+                <Button onClick={handleAddRss}>
+                  Feed hinzufuegen
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* ── Step: API Key Form ── */}
+          {wizardStep === "api-key-form" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>API Key generieren</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] pr-3">
+                <div className="grid gap-4 py-4">
+                  {addError && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {addError}
+                    </div>
+                  )}
+
+                  {/* Name */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="add-api-name">Anzeigename</Label>
+                    <Input
+                      id="add-api-name"
+                      value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      placeholder="z.B. N8N Workflows"
+                    />
+                  </div>
+
+                  {/* Icon */}
+                  <div className="space-y-1.5">
+                    <Label>Icon (optional)</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIconPickerOpen(true)}
+                        className="shrink-0"
+                      >
+                        {addIcon ? (
+                          <img src={addIcon} alt="icon" className="h-4 w-4 mr-1" />
+                        ) : (
+                          "Icon waehlen"
+                        )}
+                      </Button>
+                      <Input
+                        value={addIconUrl}
+                        onChange={(e) => { setAddIconUrl(e.target.value); setAddIcon(""); }}
+                        placeholder="oder Icon-URL eingeben"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Color */}
+                  <div className="space-y-1.5">
+                    <Label>Farbe</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {PRESET_COLORS.map((c, i) => (
+                        <button
+                          key={`${c}-${i}`}
+                          aria-label={`Farbe ${c}`}
+                          className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                            addColor === c
+                              ? "border-white scale-110"
+                              : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => setAddColor(c)}
+                        />
+                      ))}
+                      <Input
+                        type="color"
+                        value={addColor}
+                        onChange={(e) => setAddColor(e.target.value)}
+                        className="h-7 w-12 cursor-pointer p-0 border-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setAddError(""); setWizardStep("app-select"); }}>
+                  Zurueck
+                </Button>
+                <Button onClick={handleAddApiKey}>
+                  Erstellen
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* ── Step: API Key Result ── */}
+          {wizardStep === "api-key-result" && (() => {
+            const curlExample = `curl -X POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/notifications \\
+  -H "Content-Type: application/json" \\
+  -H "X-Notification-Key: ${createdApiKey}" \\
+  -d '{"title":"Test","message":"Hello!","category":"info"}'`;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Quelle erstellt</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
+                      <Check className="h-6 w-6 text-green-500" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      <strong className="text-foreground">{createdName}</strong> wurde erstellt.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>API Key</Label>
+                    <code className="glass-surface block w-full rounded-lg px-3 py-2 text-sm font-mono break-all">
+                      {createdApiKey}
+                    </code>
+                    <p className="flex items-center gap-1 text-xs text-amber-500">
+                      <AlertCircle className="h-3 w-3" />
+                      Diesen Schluessel jetzt kopieren — er wird nicht erneut angezeigt.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Beispiel (curl)</Label>
+                    <pre className="glass-surface rounded-lg px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all">
+                      {curlExample}
+                    </pre>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => copyToClipboard(createdApiKey, "key")}
+                    >
+                      {copiedKey ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                      Key kopieren
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => copyToClipboard(curlExample, "curl")}
+                    >
+                      {copiedCurl ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                      curl kopieren
+                    </Button>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => { resetWizard(); router.refresh(); }}>
+                    Fertig
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+
+          {/* ── Step: App Connect ── */}
+          {wizardStep === "app-connect" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>App verbinden</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] pr-3">
+                <div className="py-4">
+                  {addError && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive mb-4">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {addError}
+                    </div>
+                  )}
+
+                  {appConnections.length === 0 ? (
+                    <div className="flex flex-col items-center gap-3 py-8 text-center">
+                      <Link className="h-10 w-10 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Keine App-Verbindungen</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Erstelle zuerst eine App-Verbindung unter Einstellungen, um sie hier zu verknuepfen.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {appConnections.map((conn) => {
+                        const isRegistered = registeredAppConnectionIds.includes(conn.id);
+                        return (
+                          <button
+                            key={conn.id}
+                            disabled={isRegistered}
+                            onClick={() => handleConnectApp(conn)}
+                            className={`glass-card flex w-full items-center gap-3 rounded-xl border border-border p-4 text-left transition-all ${
+                              isRegistered
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover:border-primary/40 cursor-pointer"
+                            }`}
+                          >
+                            <div
+                              className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                              style={{ backgroundColor: conn.color || "#6366f1" }}
+                            >
+                              {conn.icon ? (
+                                <img src={conn.icon} alt="" className="h-5 w-5" />
+                              ) : (
+                                conn.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-foreground truncate">
+                                  {conn.name}
+                                </span>
+                                <Badge variant="outline" className="shrink-0 text-[10px]">
+                                  {conn.pluginType}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {conn.url}
+                              </p>
+                            </div>
+                            {isRegistered && (
+                              <span className="text-xs text-muted-foreground shrink-0">Bereits registriert</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setAddError(""); setWizardStep("app-select"); }}>
+                  Zurueck
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
         </DialogContent>
       </Dialog>
+
+      {/* ─── Icon Picker ─────────────────────────────────────────────── */}
+      <IconPicker
+        open={iconPickerOpen}
+        onOpenChange={setIconPickerOpen}
+        onSelect={(icon) => {
+          setAddIcon(`https://cdn.simpleicons.org/${icon.slug}`);
+          setAddIconUrl("");
+        }}
+      />
 
       {/* ─── Delete Confirmation ──────────────────────────────────── */}
       <ConfirmDialog
