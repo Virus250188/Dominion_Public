@@ -19,11 +19,12 @@ This guide covers everything you need to build, test, and publish a community pl
 9. [crawlEntities -- Entity Discovery](#9-crawlentities--entity-discovery)
 10. [Building a Widget (Optional)](#10-building-a-widget-optional)
 11. [OAuth Plugins](#11-oauth-plugins)
-12. [Testing Your Plugin](#12-testing-your-plugin)
-13. [Available Utilities](#13-available-utilities)
-14. [Limits and Rules](#14-limits-and-rules)
-15. [Complete Example -- Minimal Plugin](#15-complete-example--minimal-plugin)
-16. [Complete Example -- Full Plugin with Widget](#16-complete-example--full-plugin-with-widget)
+12. [Notification Support (Optional)](#12-notification-support-optional)
+13. [Testing Your Plugin](#13-testing-your-plugin)
+14. [Available Utilities](#14-available-utilities)
+15. [Limits and Rules](#15-limits-and-rules)
+16. [Complete Example -- Minimal Plugin](#16-complete-example--minimal-plugin)
+17. [Complete Example -- Full Plugin with Widget](#17-complete-example--full-plugin-with-widget)
 
 ---
 
@@ -1110,7 +1111,7 @@ formatUptime(270000) // -> "3d 3h"
 
 ---
 
-## 14. Limits and Rules
+## 15. Limits and Rules
 
 ### Runtime environment
 
@@ -1152,7 +1153,7 @@ The `validateStats` function sanitizes your `fetchStats` output:
 
 ---
 
-## 15. Complete Example -- Minimal Plugin
+## 16. Complete Example -- Minimal Plugin
 
 A simple plugin for a fictional "StatusPage" service that shows uptime and response time. No widget, 1x1 only.
 
@@ -1312,7 +1313,7 @@ export const plugin: AppPlugin = {
 
 ---
 
-## 16. Complete Example -- Full Plugin with Widget
+## 17. Complete Example -- Full Plugin with Widget
 
 A more complex plugin with OAuth, multiple sizes, and a custom widget. This example shows the structure for a music streaming service.
 
