@@ -207,6 +207,7 @@ model NotificationSource {
   rssInterval   Int?
   rssLastFetch  DateTime?
   rateLimit     Int       @default(60)
+  defaultCategory String?
   appConnectionId Int?
   appConnection   AppConnection? @relation(fields: [appConnectionId], references: [id], onDelete: SetNull)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)

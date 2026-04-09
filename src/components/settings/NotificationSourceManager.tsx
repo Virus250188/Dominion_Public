@@ -60,6 +60,7 @@ export interface NotificationSourceItem {
   rssUrl: string | null;
   rssInterval: number | null;
   rateLimit: number;
+  appConnectionId?: number | null;
   createdAt: string;
   totalNotifications: number;
 }
@@ -104,7 +105,7 @@ export function NotificationSourceManager({
   registeredAppConnectionIds = [],
 }: NotificationSourceManagerProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
   // ── List state ──
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -150,6 +151,10 @@ export function NotificationSourceManager({
     if (filter === "paused") return !s.enabled;
     return true;
   });
+
+  const nameIsDuplicate =
+    addName.trim() !== "" &&
+    sources.some((s) => s.name.toLowerCase() === addName.trim().toLowerCase());
 
   // ── Handlers ──
 
@@ -281,6 +286,7 @@ export function NotificationSourceManager({
         color: addColor,
         rssUrl: addRssUrl.trim(),
         rssInterval: parseInt(addRssInterval, 10),
+        defaultCategory: addRssCategory,
       });
       if (result.error) {
         setAddError(result.error);
@@ -596,13 +602,13 @@ export function NotificationSourceManager({
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
                 <button
-                  onClick={() => setWizardStep("rss-form")}
+                  onClick={() => { setAddColor("#f97316"); setWizardStep("rss-form"); }}
                   className="glass-card flex flex-col items-center gap-3 rounded-xl border border-border p-6 hover:border-primary/40 transition-all cursor-pointer"
                 >
                   <Rss className="h-10 w-10 text-primary" />
                   <div className="text-center">
                     <div className="font-medium text-foreground">RSS Feed</div>
-                    <div className="text-xs text-muted-foreground mt-1">Blogs, News oder Service-Feeds</div>
+                    <div className="text-xs text-muted-foreground mt-1">Nachrichten von Blogs, News oder Service-Feeds automatisch empfangen</div>
                   </div>
                 </button>
                 <button
@@ -612,7 +618,7 @@ export function NotificationSourceManager({
                   <AppWindow className="h-10 w-10 text-primary" />
                   <div className="text-center">
                     <div className="font-medium text-foreground">App</div>
-                    <div className="text-xs text-muted-foreground mt-1">API-Key oder App-Verbindung</div>
+                    <div className="text-xs text-muted-foreground mt-1">API-Key generieren oder Enhanced App verbinden</div>
                   </div>
                 </button>
               </div>
@@ -633,7 +639,7 @@ export function NotificationSourceManager({
                   <Key className="h-10 w-10 text-primary" />
                   <div className="text-center">
                     <div className="font-medium text-foreground">API Key generieren</div>
-                    <div className="text-xs text-muted-foreground mt-1">Manuell per HTTP senden</div>
+                    <div className="text-xs text-muted-foreground mt-1">Fuer externe Services wie N8N, Uptime Kuma oder eigene Skripte</div>
                   </div>
                 </button>
                 <button
@@ -643,7 +649,7 @@ export function NotificationSourceManager({
                   <Link className="h-10 w-10 text-primary" />
                   <div className="text-center">
                     <div className="font-medium text-foreground">App verbinden</div>
-                    <div className="text-xs text-muted-foreground mt-1">Bestehende Verbindung nutzen</div>
+                    <div className="text-xs text-muted-foreground mt-1">Installierte Enhanced App fuer Benachrichtigungen aktivieren</div>
                   </div>
                 </button>
               </div>
@@ -691,6 +697,9 @@ export function NotificationSourceManager({
                       onChange={(e) => setAddName(e.target.value)}
                       placeholder="z.B. TrueNAS Blog"
                     />
+                    {addName.trim() && sources.some((s) => s.name.toLowerCase() === addName.trim().toLowerCase()) && (
+                      <p className="text-[11px] text-destructive mt-1">Dieser Name ist bereits vergeben</p>
+                    )}
                   </div>
 
                   {/* Category */}
@@ -782,7 +791,7 @@ export function NotificationSourceManager({
                 <Button variant="outline" onClick={() => { setAddError(""); setWizardStep("select-type"); }}>
                   Zurueck
                 </Button>
-                <Button onClick={handleAddRss}>
+                <Button onClick={handleAddRss} disabled={isPending || nameIsDuplicate}>
                   Feed hinzufuegen
                 </Button>
               </DialogFooter>
@@ -813,6 +822,9 @@ export function NotificationSourceManager({
                       onChange={(e) => setAddName(e.target.value)}
                       placeholder="z.B. N8N Workflows"
                     />
+                    {addName.trim() && sources.some((s) => s.name.toLowerCase() === addName.trim().toLowerCase()) && (
+                      <p className="text-[11px] text-destructive mt-1">Dieser Name ist bereits vergeben</p>
+                    )}
                   </div>
 
                   {/* Icon */}
@@ -872,7 +884,7 @@ export function NotificationSourceManager({
                 <Button variant="outline" onClick={() => { setAddError(""); setWizardStep("app-select"); }}>
                   Zurueck
                 </Button>
-                <Button onClick={handleAddApiKey}>
+                <Button onClick={handleAddApiKey} disabled={isPending || nameIsDuplicate}>
                   Erstellen
                 </Button>
               </DialogFooter>
@@ -967,9 +979,9 @@ export function NotificationSourceManager({
                     <div className="flex flex-col items-center gap-3 py-8 text-center">
                       <Link className="h-10 w-10 text-muted-foreground" />
                       <div>
-                        <p className="text-sm font-medium text-foreground">Keine App-Verbindungen</p>
+                        <p className="text-sm font-medium text-foreground">Noch keine installierten Apps unterstuetzen Benachrichtigungen.</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Erstelle zuerst eine App-Verbindung unter Einstellungen, um sie hier zu verknuepfen.
+                          Enhanced Apps koennen diese Funktion in ihrem Plugin aktivieren.
                         </p>
                       </div>
                     </div>

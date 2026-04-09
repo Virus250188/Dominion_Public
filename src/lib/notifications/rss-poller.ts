@@ -92,6 +92,7 @@ async function pollSingleFeed(
     name: string;
     rssUrl: string | null;
     rssLastFetch: Date | null;
+    defaultCategory: string | null;
   },
   now: Date
 ): Promise<PollResult> {
@@ -135,7 +136,7 @@ async function pollSingleFeed(
             sourceId: source.id,
             title,
             message,
-            category: "info",
+            category: source.defaultCategory || "info",
             tag: "RSS",
             url: itemUrl,
             priority: 1,

@@ -52,6 +52,7 @@ export async function createNotificationSource(data: {
   rssInterval?: number;
   rateLimit?: number;
   appConnectionId?: number;
+  defaultCategory?: string;
 }) {
   const userId = await requireUserId();
 
@@ -81,6 +82,7 @@ export async function createNotificationSource(data: {
       rssUrl: data.rssUrl || null,
       rssInterval: data.rssInterval || null,
       rateLimit: data.rateLimit || 60,
+      defaultCategory: data.defaultCategory || null,
       appConnectionId: data.appConnectionId || null,
     },
   });
