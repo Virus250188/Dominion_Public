@@ -78,6 +78,7 @@ HANDOVER.md
 Ideen.txt
 PLAN-*.md
 AGENTS.md
+CLAUDE.md
 
 # Community plugins (installed locally, not in repo or Docker)
 src/plugins/community/*/
