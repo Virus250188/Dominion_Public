@@ -50,6 +50,7 @@ export const embyPlugin: AppPlugin = {
         { label: "Normal (5s)", value: "5000" },
         { label: "Schnell (3s)", value: "3000" },
       ],
+      showForSizes: ["2x1", "2x2"],
     },
     {
       key: "carouselItems",
@@ -62,6 +63,7 @@ export const embyPlugin: AppPlugin = {
         { label: "8 Covers", value: "8" },
         { label: "10 Covers", value: "10" },
       ],
+      showForSizes: ["2x1", "2x2"],
     },
   ],
 
