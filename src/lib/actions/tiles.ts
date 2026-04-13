@@ -129,6 +129,7 @@ export async function createTile(data: {
   });
 
   revalidatePath("/");
+  revalidatePath("/settings/apps");
   return tile;
 }
 
@@ -191,6 +192,7 @@ export async function updateTile(
   });
 
   revalidatePath("/");
+  revalidatePath("/settings/apps");
   return tile;
 }
 
@@ -205,6 +207,7 @@ export async function deleteTile(id: number) {
 
   await prisma.tile.delete({ where: { id } });
   revalidatePath("/");
+  revalidatePath("/settings/apps");
 }
 
 export async function reorderTiles(orderedIds: number[]) {
