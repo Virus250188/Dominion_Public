@@ -1,17 +1,23 @@
 # Changelog
 
-## v1.3.0-beta (2026-04-09)
+## v1.3.0-beta (2026-04-13)
 
 ### Added
 - **Notification Panel** — real-time notification sidebar with SSE streaming, badge counter, collapsible panel
 - **Notification Sources** — multi-step wizard to create RSS feeds, API key sources, or connect Enhanced Apps
 - **RSS Feed Poller** — automatic polling with configurable intervals (5/15/30/60 min), per-feed category
 - **API Key Management** — generate keys for external services (N8N, scripts), curl example on creation
+- **Plugin Notification Rules** — plugins can declare `notificationRules[]` so users can toggle individual rule categories per app (full guide in [docs/plugin-development.md §12](docs/plugin-development.md))
 - **Settings Page** — full source management (create, edit, delete, enable/disable, key regeneration)
 - **Critical Pulse** — critical notifications glow with inset red pulse animation
 - **App Connect Framework** — `supportsNotifications` flag for plugins, AppConnection linking ready
+- **Emby tile-size polish** — `carouselSpeed` and `carouselItems` config fields are hidden on 1×1 tiles
 
 ### Security
+- **API key lookup via sha256 hash** — `NotificationSource.apiKeyHash` (new, indexed) replaces the per-request decrypt-everything-and-string-compare loop on `POST /api/notifications`. Removes both the O(n) scan and the timing-attack surface. Existing keys are lazily backfilled on next use, no manual action needed.
+- **RSS poller scoped to the requesting user** — `pollRSSFeeds(userId)` no longer pulls every user's feeds when an authenticated user hits `/api/notifications/rss-poll`.
+- **RSS item URLs validated** — only `http(s)` links from feed items are persisted, so a malicious feed cannot inject `javascript:` or `data:` URLs into the notification panel.
+- **SSE heartbeat self-cleanup** — heartbeat timer stops immediately when the controller is closed, even if the runtime never invokes `cancel()` (some serverless edges drop connections silently).
 - SSRF protection on RSS feeds (blocked: localhost, metadata endpoints, link-local IPs)
 - Feed URL validation at creation, update, and poll time (triple-check)
 - Middleware scoped: only POST `/api/notifications` is public (API key auth), sub-routes require session
@@ -20,12 +26,21 @@
 - Rate limiting per source (configurable, default 60/hour)
 
 ### Fixed
+- **Tile counter on /settings/apps** stayed stale after creating, updating, or deleting tiles from the dashboard. All tile-mutating Server Actions now revalidate `/settings/apps` so the "active tiles" badge stays in sync.
+- **Tile resize lost user values silently** — config fields hidden by `showForSizes` are now cleared when a tile is shrunk, preventing them from re-activating after a resize back up.
+- **Emby 2×1 widget honors `carouselItems`** — was hardcoded to a max of 3 items regardless of user setting.
+- **Webhook `priority` default documentation** — corrected to `1` (normal) to match the type contract.
+- **Stricter `currentSize` derivation** in TileDialog — uses strict equality so future tile spans can't be silently misclassified.
+- **gitignore** now covers `prisma/dev.db.*` and `prisma/dev.db-journal` to prevent accidental commit of DB artifacts.
 - Notification panel no longer crashes on init failure (defensive try-catch)
 - `isExpired()` handles both null and undefined correctly
 - RSS poller only imports items from source creation date onwards (no old flood)
 - Panel limited to 20 newest notifications
 - Source deletion is instant (optimistic UI)
 - "Mehr anzeigen" uses DOM-based truncation detection (works at any panel width)
+
+### Migrations
+- `20260413120000_add_notification_key_hash` — adds nullable `apiKeyHash` column with a unique index on `NotificationSource`. Non-destructive ALTER TABLE; existing rows backfill on first POST.
 
 ---
 
