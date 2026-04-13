@@ -160,7 +160,7 @@ function CoverImage({
 function EmbyWidget2x1({ stats }: WidgetProps) {
   const data = parseWidgetData(stats.widgetData);
   const carouselSpeed = data?.carouselSpeed || 5000;
-  const maxItems = Math.min(data?.carouselItems || 3, 3);
+  const maxItems = data?.carouselItems || 3;
   const items = data ? data.recentItems.slice(0, maxItems) : [];
 
   const [currentIndex, setCurrentIndex] = useState(0);

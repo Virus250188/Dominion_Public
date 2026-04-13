@@ -13,8 +13,9 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = parseInt(session.user.id, 10);
 
-    const results = await pollRSSFeeds();
+    const results = await pollRSSFeeds(userId);
     return NextResponse.json(results);
   } catch (err) {
     logger.error("rss-poll", "Polling failed", {

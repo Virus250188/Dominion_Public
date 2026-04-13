@@ -43,12 +43,22 @@ export async function GET() {
       // Send initial connected event
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "connected" })}\n\n`));
 
-      // Heartbeat to keep connection alive
+      // Heartbeat to keep connection alive. If enqueue throws (controller
+      // closed), stop the timer immediately so it doesn't leak when the
+      // runtime never invokes cancel() (some serverless edges drop the
+      // connection without firing cancel).
       heartbeatTimer = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`:heartbeat\n\n`));
         } catch {
-          // Stream closed, cleanup will happen in cancel
+          if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+          }
+          if (writer) {
+            sseManager.removeClient(userId, writer);
+            writer = null;
+          }
         }
       }, HEARTBEAT_INTERVAL_MS);
 

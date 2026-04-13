@@ -4,6 +4,7 @@ import prisma from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { sseManager } from "@/lib/notifications/sse-manager";
+import { hashApiKey } from "@/lib/notifications/keys";
 import type { NotificationCategory } from "@/lib/notifications/types";
 
 const VALID_CATEGORIES: NotificationCategory[] = [
@@ -27,15 +28,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the source by decrypting all keys and matching
-    const allSources = await prisma.notificationSource.findMany();
-    const source = allSources.find((s) => {
-      try {
-        return decrypt(s.apiKey) === apiKey;
-      } catch {
-        return false;
-      }
+    // Look up by sha256(apiKey) — indexed unique column. Constant-time at
+    // the DB layer and no decrypt-everything-and-compare loop.
+    const incomingHash = hashApiKey(apiKey);
+    let source = await prisma.notificationSource.findUnique({
+      where: { apiKeyHash: incomingHash },
     });
+
+    // Lazy backfill for sources created before the apiKeyHash column existed.
+    // On the next successful POST their hash is persisted, so this branch is
+    // taken at most once per legacy source.
+    if (!source) {
+      const legacySources = await prisma.notificationSource.findMany({
+        where: { apiKeyHash: null, type: { not: "rss" } },
+      });
+      for (const candidate of legacySources) {
+        if (!candidate.apiKey) continue;
+        try {
+          if (decrypt(candidate.apiKey) === apiKey) {
+            source = await prisma.notificationSource.update({
+              where: { id: candidate.id },
+              data: { apiKeyHash: incomingHash },
+            });
+            break;
+          }
+        } catch {
+          // skip undecryptable rows
+        }
+      }
+    }
 
     if (!source) {
       return NextResponse.json(

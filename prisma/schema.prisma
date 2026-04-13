@@ -203,6 +203,7 @@ model NotificationSource {
   color         String    @default("#6366f1")
   enabled       Boolean   @default(true)
   apiKey        String
+  apiKeyHash    String?   @unique
   rssUrl        String?
   rssInterval   Int?
   rssLastFetch  DateTime?

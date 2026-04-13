@@ -49,15 +49,18 @@ const parser = new Parser({
 });
 
 /**
- * Polls all enabled RSS-type notification sources that are due for a refresh.
- * Safe to call concurrently — failures on individual feeds are isolated.
+ * Polls enabled RSS-type notification sources for the given user that are due
+ * for a refresh. Safe to call concurrently — failures on individual feeds are
+ * isolated. Always pass a userId so polling stays scoped to the requester and
+ * users cannot trigger work on each other's feeds.
  */
-export async function pollRSSFeeds(): Promise<RSSPollSummary> {
+export async function pollRSSFeeds(userId: number): Promise<RSSPollSummary> {
   const now = new Date();
 
-  // Load all enabled RSS sources
+  // Load enabled RSS sources for this user only
   const sources = await prisma.notificationSource.findMany({
     where: {
+      userId,
       type: "rss",
       enabled: true,
       rssUrl: { not: null },
@@ -158,7 +161,14 @@ async function pollSingleFeed(
       const rawContent =
         item.contentSnippet ?? item.content ?? item.summary ?? "";
       const message = rawContent.slice(0, MAX_MESSAGE_LENGTH) || null;
-      const itemUrl = item.link ?? null;
+      // RSS feeds can contain `javascript:` or `data:` links. Only keep
+      // http(s) URLs so consumers can safely render them as <a href>.
+      const rawItemUrl = item.link ?? null;
+      const itemUrl =
+        rawItemUrl &&
+        (rawItemUrl.startsWith("http://") || rawItemUrl.startsWith("https://"))
+          ? rawItemUrl
+          : null;
 
       try {
         const notification = await prisma.notification.create({

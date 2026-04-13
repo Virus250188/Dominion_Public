@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { requireUserId } from "@/lib/actions/requireUserId";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
-import { generateApiKey } from "@/lib/notifications/keys";
+import { generateApiKey, hashApiKey } from "@/lib/notifications/keys";
 import { invalidatePluginSourceCache } from "@/lib/notifications/plugin-checker";
 import { getPlugin } from "@/plugins/registry";
 
@@ -125,6 +125,7 @@ export async function createNotificationSource(data: {
 
   const plainKey = data.type === "rss" ? null : generateApiKey();
   const encryptedKey = plainKey ? encrypt(plainKey) : "";
+  const apiKeyHash = plainKey ? hashApiKey(plainKey) : null;
 
   const source = await prisma.notificationSource.create({
     data: {
@@ -135,6 +136,7 @@ export async function createNotificationSource(data: {
       icon: data.icon || null,
       color: data.color || "#6366f1",
       apiKey: encryptedKey,
+      apiKeyHash,
       rssUrl: data.rssUrl || null,
       rssInterval: data.rssInterval || null,
       rateLimit: data.rateLimit || 60,
@@ -228,10 +230,11 @@ export async function regenerateApiKey(id: number) {
 
   const plainKey = generateApiKey();
   const encryptedKey = encrypt(plainKey);
+  const apiKeyHash = hashApiKey(plainKey);
 
   await prisma.notificationSource.update({
     where: { id },
-    data: { apiKey: encryptedKey },
+    data: { apiKey: encryptedKey, apiKeyHash },
   });
 
   revalidatePath(SETTINGS_PATH);

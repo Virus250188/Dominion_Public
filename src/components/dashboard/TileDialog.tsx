@@ -202,10 +202,12 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
   // Get matched plugin
   const matchedPlugin: AppPlugin | undefined = enhancedType ? getPlugin(enhancedType) : undefined;
 
-  // Current tile size key derived from columnSpan/rowSpan
+  // Current tile size key derived from columnSpan/rowSpan. Strict equality
+  // so any new spans added later (e.g. 1x2, 3x2) fall back to "1x1" instead
+  // of being silently misclassified by `>=` and showing the wrong fields.
   const currentSize: TileSize =
-    columnSpan >= 2 && rowSpan >= 2 ? "2x2" :
-    columnSpan >= 2 ? "2x1" :
+    columnSpan === 2 && rowSpan === 2 ? "2x2" :
+    columnSpan === 2 && rowSpan === 1 ? "2x1" :
     "1x1";
 
   // Whether we are editing an enhanced tile with an AppConnection
@@ -414,7 +416,10 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
     return () => bc.close();
   }, [linkedConnectionId]);
 
-  // Trim selectedEntities and selectedStats when size changes
+  // Trim selectedEntities and selectedStats when size changes, and clear
+  // configFields whose `showForSizes` excludes the new size — otherwise the
+  // hidden fields stay in enhancedConfig with their old values and silently
+  // re-activate when the user resizes back up.
   useEffect(() => {
     const limit = STAT_LIMITS[currentSize] ?? 3;
     if (selectedEntities.length > limit) {
@@ -428,6 +433,23 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
       const filtered = prev.filter(key => availableKeys.includes(key));
       return filtered.slice(0, limit);
     });
+    // Drop config keys belonging to fields hidden for the new size.
+    const hiddenConfigKeys = matchedPlugin?.configFields
+      .filter(f => f.showForSizes && !f.showForSizes.includes(currentSize))
+      .map(f => f.key) ?? [];
+    if (hiddenConfigKeys.length > 0) {
+      setEnhancedConfig(prev => {
+        let changed = false;
+        const next = { ...prev };
+        for (const key of hiddenConfigKeys) {
+          if (key in next) {
+            delete next[key];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
   }, [currentSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-crawl is triggered inside the main useEffect above via autoCrawlRef

@@ -207,9 +207,12 @@ statOptions: [
     label: "Aktive Streams",  // Shown in the toggle UI
     description: "Number of currently active streams",
     defaultEnabled: true,     // Checked by default
+    showForSizes: ["1x1"],    // Optional: only show for specific tile sizes
   },
 ]
 ```
+
+The optional `showForSizes` property works the same as on `configFields`: if set, the stat option only appears in the tile dialog when the current tile size matches. If not set, it appears for all sizes (default). When the user switches to a size where a selected stat is not available, it is automatically deselected.
 
 ### `supportedSizes` (required, array)
 
@@ -267,7 +270,42 @@ interface ConfigField {
   min?: number;           // For "number" type
   max?: number;           // For "number" type
   oauth?: OAuthConfig;    // For "oauth" type only
+  showForSizes?: TileSize[];  // Only show this field for specific tile sizes
 }
+```
+
+### Size-Dependent Fields (`showForSizes`)
+
+Use `showForSizes` to make a config field visible only when the user has selected a specific tile size. This is useful for widget-specific settings that don't apply to smaller sizes.
+
+- If `showForSizes` is **not set** (default), the field appears for all tile sizes -- backwards compatible.
+- If set, the field is **only shown** when the current tile size is in the array.
+
+```ts
+configFields: [
+  // Always visible (no showForSizes)
+  { key: "apiUrl", label: "Server URL", type: "url", required: true },
+  { key: "apiKey", label: "API Key", type: "password", required: true },
+
+  // Only visible for 2x1 and 2x2 tiles
+  { key: "carouselSpeed", label: "Carousel Speed", type: "select",
+    options: [
+      { label: "Slow (8s)", value: "8000" },
+      { label: "Normal (5s)", value: "5000" },
+      { label: "Fast (3s)", value: "3000" },
+    ],
+    showForSizes: ["2x1", "2x2"],
+  },
+
+  // Only visible for 2x2 tiles
+  { key: "showContainers", label: "Show Containers", type: "select",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    showForSizes: ["2x2"],
+  },
+]
 ```
 
 ### Type Reference
@@ -366,7 +404,7 @@ When a user adds or edits a tile, the dashboard splits your `configFields` into 
 | `required: true` | Immediately when creating a new connection |
 | `type: "oauth"` | Immediately when creating a new connection |
 | All other fields | Only AFTER the connection test succeeds |
-| Widget-only keys (`carouselSpeed`, `carouselItems`) | Only when the current tile size uses a `"widget"` layout |
+| Fields with `showForSizes` set | Only when the current tile size is in the array |
 
 The logic in `TileDialog.tsx` is straightforward:
 
@@ -378,14 +416,11 @@ const connectionFields = plugin.configFields.filter(
   (f) => CONNECTION_KEYS.has(f.key) || f.required || f.type === "oauth"
 );
 
-// Group 2: shown after successful connection test
-const WIDGET_ONLY_KEYS = new Set(["carouselSpeed", "carouselItems"]);
-const isWidgetLayout = plugin.renderHints[currentSize]?.layout === "widget";
-
+// Group 2: shown after successful connection test, filtered by tile size
 const featureFields = plugin.configFields.filter(
   (f) => !CONNECTION_KEYS.has(f.key) && !f.required && f.type !== "oauth"
 ).filter(
-  (f) => isWidgetLayout || !WIDGET_ONLY_KEYS.has(f.key)
+  (f) => !f.showForSizes || f.showForSizes.includes(currentSize)
 );
 ```
 
@@ -403,7 +438,7 @@ configFields: [
   { key: "apiUrl",  label: "Server URL",  type: "url",      required: true },
   { key: "apiKey",  label: "API Key",     type: "password",  required: true },
 
-  // Group 2 — Feature (shown after connection test)
+  // Group 2 — Feature (shown after connection test, all sizes)
   { key: "mediaCategory", label: "Kategorie", type: "select",
     options: [
       { label: "Filme", value: "movies" },
@@ -411,15 +446,22 @@ configFields: [
     ],
   },
 
-  // Group 2, widget-only — shown only when size is 2x1/2x2 with widget layout
-  { key: "carouselSpeed", label: "Karussell Geschwindigkeit (ms)", type: "number",
-    min: 3000, max: 15000, placeholder: "5000",
+  // Group 2 — Only shown for 2x1 and 2x2 tiles (uses showForSizes)
+  { key: "carouselSpeed", label: "Karussell Geschwindigkeit", type: "select",
+    options: [
+      { label: "Slow (8s)", value: "8000" },
+      { label: "Normal (5s)", value: "5000" },
+      { label: "Fast (3s)", value: "3000" },
+    ],
+    showForSizes: ["2x1", "2x2"],
   },
 ]
 ```
 
 > [!TIP]
 > If you want a field to appear immediately (e.g. a server port that's needed for the connection test), either set `required: true` or use one of the recognized connection keys. Otherwise it will be hidden until after the test.
+>
+> Use `showForSizes` to control which tile sizes see a given field. This replaces the old hardcoded widget-only key filtering and works for any plugin.
 
 ---
 
@@ -950,26 +992,134 @@ async refreshToken(config: PluginConfig) {
 
 Plugins can send notifications to the dashboard's notification panel. This allows your service to alert users about events (disk warnings, download completions, sensor thresholds, etc.).
 
-### Enabling Notification Support
+There are two approaches: **Plugin-originated notifications** (recommended) let the plugin detect state changes automatically during polling, while **Webhook notifications** let an external service push notifications via HTTP.
 
-Set the `supportsNotifications` flag in your plugin:
+### 12.1 Plugin-Originated Notifications (checkNotifications)
+
+The recommended approach. The dashboard calls your `checkNotifications` method after every `fetchStats` poll, passing the current and previous `widgetData` so you can detect state changes and return notifications.
+
+#### Enabling
 
 ```ts
 export const plugin: AppPlugin = {
   metadata: { /* ... */ },
   supportsNotifications: true,   // ← enables notification integration
-  // ...
+  // ... other fields ...
+
+  async checkNotifications(config, currentData, previousData) {
+    const notifications: PluginNotification[] = [];
+
+    // previousData is null on first poll (or after server restart)
+    if (!previousData) return notifications;
+
+    // Example: detect a state change
+    if (previousData.status !== currentData.status) {
+      notifications.push({
+        dedupKey: `status-${currentData.status}`,
+        title: `Status changed to ${currentData.status}`,
+        category: "warning",
+        tag: "System",
+      });
+    }
+
+    return notifications;
+  },
 };
 ```
 
-When this flag is set:
+#### How It Works
+
+1. Dashboard polls `fetchStats` → receives `{ items, status, widgetData }`
+2. If `supportsNotifications` is `true` and `checkNotifications` exists:
+   - The dashboard passes `currentData` (current `widgetData`) and `previousData` (from last poll)
+   - Your method compares them and returns an array of `PluginNotification` objects
+3. The dashboard handles deduplication, storage, and SSE broadcast automatically
+4. A `NotificationSource` is auto-created for your plugin on the first notification
+
+#### The PluginNotification Interface
+
+```ts
+interface PluginNotification {
+  dedupKey: string;        // Unique key for dedup (e.g. "container-stopped-abc123")
+  title: string;           // Notification title (max 255 chars)
+  message?: string;        // Body text (max 2000 chars)
+  category: "info" | "warning" | "critical" | "update";
+  priority?: number;       // 0-3, default 1
+  tag?: string;            // Grouping label (e.g. "Docker", "Array")
+  url?: string;            // Click-through link
+  dedupMinutes?: number;   // Suppress same dedupKey for N minutes (default: 60)
+}
+```
+
+#### Deduplication
+
+The `dedupKey` is scoped to your plugin's notification source. A notification with the same `dedupKey` will not fire again within `dedupMinutes` (default: 60 minutes) unless the user acknowledges the previous one.
+
+**Dedup key strategy tips:**
+- State-based: `"array-stopped"` — fires once per state, resets when acknowledged
+- Instance-based: `"container-stopped-${containerId}"` — per-item dedup
+- Threshold-based: `"disk-temp-${diskName}"` — fires once per disk per window
+
+#### Important Notes
+
+- `previousData` is `null` on the first poll after server start. Always handle this gracefully by returning an empty array.
+- `checkNotifications` runs as fire-and-forget — errors won't affect the stats response.
+- The method is throttled to run at most once per 30 seconds per tile, even with multiple browser tabs open.
+- Your `widgetData` from `fetchStats` must contain the data you need for comparison. Design your `widgetData` accordingly.
+
+#### Declaring User-Configurable Rules (notificationRules)
+
+If your plugin emits multiple distinct kinds of notifications, declare them as **rules** so the user can toggle each kind on or off in *Settings > Benachrichtigungen > App verbinden*. Without a rule catalog every notification you emit is always on and the user has no per-category control.
+
+```ts
+import type { AppPlugin, PluginNotificationRule } from "@/plugins/types";
+
+const notificationRules: PluginNotificationRule[] = [
+  {
+    id: "interface_down",
+    label: "Interface offline",
+    description: "Fires when a network interface goes down",
+    severity: "critical",
+    defaultEnabled: true,
+  },
+  {
+    id: "high_cpu",
+    label: "High CPU load",
+    description: "Fires when CPU usage exceeds 90% for more than 5 minutes",
+    severity: "warning",
+    defaultEnabled: false,
+  },
+];
+
+export const plugin: AppPlugin = {
+  metadata: { /* ... */ },
+  supportsNotifications: true,
+  notificationRules,            // ← declare the catalog
+  // ... other fields ...
+};
+```
+
+**How rules and `tag` interact:** the `tag` field of every `PluginNotification` you emit must match a rule `id` for the user toggle to take effect. The dashboard reads the user's enabled-rules list (`ruleConfig.enabledRules`) and silently drops notifications whose `tag` is not in the list. If you forget to set `tag`, the rule is treated as always enabled and the user toggle does nothing.
+
+```ts
+notifications.push({
+  dedupKey: `iface-${name}-down`,
+  title: `${name} is offline`,
+  category: "critical",
+  tag: "interface_down",        // ← matches notificationRules[].id
+});
+```
+
+**Defaults:** rules with `defaultEnabled: true` are activated automatically when the user enables notifications for your app. Users can later toggle individual rules in the settings UI.
+
+### 12.2 Webhook Notifications (External Push)
+
+For services that can send HTTP requests themselves, you can use the webhook API directly.
+
+When `supportsNotifications` is set:
 - The plugin appears in **Settings > Benachrichtigungen > Neue Quelle > App verbinden**
-- Users can activate notifications for this plugin using their existing AppConnection (no re-entering credentials)
-- A `NotificationSource` is created automatically, linked to the AppConnection
-
-### Sending Notifications
-
-Once a user has connected your app as a notification source, your service can send notifications via HTTP POST:
+- Users can activate notifications for this plugin using their existing AppConnection
+- A `NotificationSource` is created with an API key for webhook authentication
 
 ```bash
 curl -X POST https://dashboard.example.com/api/notifications \
@@ -993,7 +1143,7 @@ curl -X POST https://dashboard.example.com/api/notifications \
 | `critical` | Failures, immediate action needed | Red pulse glow |
 | `update` | Version updates, new content | Blue accent |
 
-### Payload Fields
+### Payload Fields (Webhook)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -1002,11 +1152,11 @@ curl -X POST https://dashboard.example.com/api/notifications \
 | `category` | string | Yes | info, warning, critical, or update |
 | `tag` | string | No | Grouping label (e.g. "Storage", "Media") |
 | `url` | string | No | Link URL (must be http/https) |
-| `priority` | number | No | 0-3, default 0 |
+| `priority` | number | No | 0-3, default 1 (0 = low, 1 = normal, 2 = high, 3 = critical) |
 
 ### Rate Limiting
 
-Each notification source has a configurable rate limit (default: 60 per hour). Requests exceeding the limit receive HTTP 429.
+Each notification source has a configurable rate limit (default: 60 per hour). Webhook requests exceeding the limit receive HTTP 429. Plugin-originated notifications are throttled at the polling level (max once per 30s per tile).
 
 ---
 
