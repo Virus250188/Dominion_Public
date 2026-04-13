@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { getGroupWithTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";
 import { getTiles } from "@/lib/queries/tiles";
+import { getAppConnectionsWithNotifications } from "@/lib/actions/notifications";
 import { decrypt } from "@/lib/crypto";
 import { GroupDashboard } from "@/components/dashboard/GroupDashboard";
 import { Header } from "@/components/dashboard/Header";
@@ -26,10 +27,11 @@ export default async function GroupPage({ params }: GroupPageProps) {
     redirect("/");
   }
 
-  const [group, settings, allTiles] = await Promise.all([
+  const [group, settings, allTiles, connectionsWithNotifications] = await Promise.all([
     getGroupWithTiles(userId, groupId),
     getUserSettings(userId),
     getTiles(userId),
+    getAppConnectionsWithNotifications(),
   ]);
 
   if (!group) {
@@ -88,6 +90,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
           tiles={groupTiles}
           allTiles={allTilesMapped}
           assignedTileIds={group.groupTiles.map((gt) => gt.tileId)}
+          connectionsWithNotifications={connectionsWithNotifications}
           gridColumns={settings?.gridColumns ?? 6}
         />
       </main>

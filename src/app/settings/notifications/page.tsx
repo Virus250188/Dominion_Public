@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { NotificationSourceManager } from "@/components/settings/NotificationSourceManager";
-import { getAllPlugins } from "@/plugins/registry";
+import { getAllPlugins, getPlugin } from "@/plugins/registry";
 
 export default async function NotificationsSettingsPage() {
   const session = await auth();
@@ -12,7 +12,10 @@ export default async function NotificationsSettingsPage() {
 
   const sources = await prisma.notificationSource.findMany({
     where: { userId },
-    include: { _count: { select: { notifications: true } } },
+    include: {
+      _count: { select: { notifications: true } },
+      appConnection: { select: { pluginType: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -31,6 +34,10 @@ export default async function NotificationsSettingsPage() {
     appConnectionId: s.appConnectionId,
     createdAt: s.createdAt.toISOString(),
     totalNotifications: s._count.notifications,
+    ruleConfig: s.ruleConfig,
+    pluginRules: s.appConnection?.pluginType
+      ? getPlugin(s.appConnection.pluginType)?.notificationRules ?? null
+      : null,
   }));
 
   // Fetch app connections for the "App verbinden" wizard step

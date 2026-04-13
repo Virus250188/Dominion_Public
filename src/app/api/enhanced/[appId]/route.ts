@@ -6,6 +6,7 @@ import { validateStats } from "@/plugins/validator";
 import { decrypt, encrypt } from "@/lib/crypto";
 import type { PluginConfig } from "@/plugins/types";
 import { logger } from "@/lib/logger";
+import { maybeCheckPluginNotifications } from "@/lib/notifications/plugin-checker";
 
 export async function GET(
   request: NextRequest,
@@ -118,6 +119,15 @@ export async function GET(
     const rawStats = await plugin.fetchStats(config);
     const stats = validateStats(rawStats);
     logger.debug("enhanced-api", "Fetched stats", { tileId: String(tileId), plugin: tile.enhancedType });
+
+    // Fire-and-forget: check plugin notifications if supported
+    if (stats.status === "ok" && stats.widgetData && tile.appConnectionId) {
+      maybeCheckPluginNotifications(
+        tileId, userId, plugin, tile.enhancedType!,
+        tile.appConnectionId, stats.widgetData, config,
+      );
+    }
+
     return NextResponse.json(stats);
   } catch (err) {
     const message = (err as Error).message;

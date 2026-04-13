@@ -65,6 +65,7 @@ interface SubDashboardViewProps {
     assignedTileIds?: number[];
   })[];
   foundationApps: FoundationAppData[];
+  connectionsWithNotifications?: number[];
   gridColumns: number;
 }
 
@@ -84,6 +85,7 @@ export function SubDashboardView({
   initialGroupsWithTiles,
   initialGroups,
   foundationApps,
+  connectionsWithNotifications = [],
   gridColumns,
 }: SubDashboardViewProps) {
   const [subDashboard, setSubDashboard] = useState(initialSubDashboard);
@@ -777,6 +779,7 @@ export function SubDashboardView({
         tile={editingTile}
         initialGroupId={editingTileGroupId}
         foundationApps={foundationApps}
+        connectionsWithNotifications={connectionsWithNotifications}
         groups={groupDataForDialog}
         onGroupsChange={(newGroups) =>
           setGroups((prev) => {

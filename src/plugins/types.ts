@@ -35,6 +35,33 @@ export interface PluginStats {
   widgetData?: Record<string, unknown>;
 }
 
+// ─── Plugin Notifications ──────────────────────────────────────────────────
+
+export interface PluginNotification {
+  /** Unique key for deduplication — same key won't fire again within dedupWindow */
+  dedupKey: string;
+  title: string;
+  message?: string;
+  category: "info" | "warning" | "critical" | "update";
+  /** 0 = low, 1 = normal, 2 = high, 3 = critical. Default: 1 */
+  priority?: number;
+  /** Free-form grouping label (e.g. "Docker", "Array", "Updates") */
+  tag?: string;
+  /** Click-through URL */
+  url?: string;
+  /** Minutes to suppress duplicate dedupKey. Default: 60 */
+  dedupMinutes?: number;
+}
+
+export interface PluginNotificationRule {
+  /** Must match PluginNotification.tag emitted for this rule */
+  id: string;
+  label: string;
+  description: string;
+  severity: "info" | "warning" | "critical";
+  defaultEnabled: boolean;
+}
+
 // ─── Config ────────────────────────────────────────────────────────────────
 
 export interface PluginConfig {
@@ -63,6 +90,8 @@ export interface ConfigField {
     scopes: string[];
     pkce?: boolean;
   };
+  /** When set, this field is only shown in the TileDialog for the specified sizes */
+  showForSizes?: TileSize[];
 }
 
 // ─── Stat Options ──────────────────────────────────────────────────────────
@@ -72,6 +101,8 @@ export interface StatOption {
   label: string;
   description: string;
   defaultEnabled: boolean;
+  /** When set, this stat option is only shown in the TileDialog for the specified sizes */
+  showForSizes?: TileSize[];
 }
 
 // ─── Render Hints ──────────────────────────────────────────────────────────
@@ -123,6 +154,18 @@ export interface AppPlugin {
     expiresAt?: number;
   }>;
   supportsNotifications?: boolean;
+  /** Catalog of notification rules users can enable/disable per source */
+  notificationRules?: PluginNotificationRule[];
+  /**
+   * Called after fetchStats when the plugin supports notifications
+   * and the tile has a linked NotificationSource.
+   * Receives the previous widgetData to detect state changes.
+   */
+  checkNotifications?(
+    config: PluginConfig,
+    currentData: Record<string, unknown>,
+    previousData: Record<string, unknown> | null,
+  ): Promise<PluginNotification[]>;
 }
 
 // ─── Backward Compatibility ────────────────────────────────────────────────

@@ -58,6 +58,10 @@ export function validatePlugin(plugin: AppPlugin): string[] {
     errors.push("testConnection must be a function");
   }
 
+  if (plugin.supportsNotifications && typeof plugin.checkNotifications !== "function") {
+    logger.warn("plugin-validator", `Plugin "${metadata.id}" sets supportsNotifications but does not implement checkNotifications()`);
+  }
+
   return errors;
 }
 

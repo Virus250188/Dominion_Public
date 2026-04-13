@@ -5,6 +5,8 @@ import { requireUserId } from "@/lib/actions/requireUserId";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { revalidatePath } from "next/cache";
 import { generateApiKey } from "@/lib/notifications/keys";
+import { invalidatePluginSourceCache } from "@/lib/notifications/plugin-checker";
+import { getPlugin } from "@/plugins/registry";
 
 const SETTINGS_PATH = "/settings/notifications";
 
@@ -234,4 +236,127 @@ export async function regenerateApiKey(id: number) {
 
   revalidatePath(SETTINGS_PATH);
   return plainKey;
+}
+
+// ─── App Notification Rules ─────────────────────────────────────────────────
+
+/**
+ * Enable notifications for a given AppConnection. Creates a plugin-type
+ * NotificationSource for the connection, pre-populating `ruleConfig` with
+ * all default-enabled rules from the plugin. Idempotent: returns the
+ * existing source if one already exists.
+ */
+export async function enableAppNotifications(appConnectionId: number) {
+  const userId = await requireUserId();
+
+  const appConnection = await prisma.appConnection.findUnique({
+    where: { id: appConnectionId },
+  });
+  if (!appConnection || appConnection.userId !== userId) {
+    throw new Error("AppConnection not found or access denied");
+  }
+
+  const plugin = getPlugin(appConnection.pluginType);
+  if (!plugin || !plugin.supportsNotifications || !plugin.notificationRules?.length) {
+    return { error: "Plugin does not support notifications" };
+  }
+
+  const sourceId = `plugin-${appConnection.pluginType}-${appConnectionId}`;
+  const existing = await prisma.notificationSource.findUnique({
+    where: { userId_sourceId: { userId, sourceId } },
+  });
+  if (existing) {
+    // Already enabled — no-op for idempotency
+    return existing;
+  }
+
+  const defaultEnabled = plugin.notificationRules
+    .filter((r) => r.defaultEnabled)
+    .map((r) => r.id);
+  const ruleConfig = JSON.stringify({ enabledRules: defaultEnabled });
+
+  const source = await prisma.notificationSource.create({
+    data: {
+      userId,
+      sourceId,
+      name: `${plugin.metadata.name} Notifications`,
+      type: "plugin",
+      icon: plugin.metadata.icon ?? null,
+      color: plugin.metadata.color ?? "#6366f1",
+      apiKey: encrypt(""),
+      appConnectionId,
+      ruleConfig,
+      rateLimit: 60,
+    },
+  });
+
+  // Invalidate the plugin-checker cache so the next check sees the new source
+  invalidatePluginSourceCache(appConnectionId);
+
+  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/");
+  return source;
+}
+
+/**
+ * Update the set of enabled notification rules for a plugin-type source.
+ * Validates that every id exists in the plugin's declared rule catalog.
+ */
+export async function updateNotificationRules(
+  sourceId: number,
+  enabledRules: string[],
+) {
+  const userId = await requireUserId();
+
+  const source = await prisma.notificationSource.findUnique({
+    where: { id: sourceId },
+    include: { appConnection: true },
+  });
+  if (!source || source.userId !== userId) {
+    throw new Error("NotificationSource not found or access denied");
+  }
+
+  if (!source.appConnectionId || !source.appConnection) {
+    return { error: "Source is not linked to an app connection" };
+  }
+
+  const plugin = getPlugin(source.appConnection.pluginType);
+  if (!plugin || !plugin.notificationRules?.length) {
+    return { error: "Plugin does not declare notification rules" };
+  }
+
+  const validIds = new Set(plugin.notificationRules.map((r) => r.id));
+  for (const id of enabledRules) {
+    if (!validIds.has(id)) {
+      return { error: `Invalid rule id: ${id}` };
+    }
+  }
+
+  await prisma.notificationSource.update({
+    where: { id: sourceId },
+    data: { ruleConfig: JSON.stringify({ enabledRules }) },
+  });
+
+  // Invalidate cache so the new ruleConfig is picked up
+  invalidatePluginSourceCache(source.appConnectionId);
+
+  revalidatePath(SETTINGS_PATH);
+  return { success: true };
+}
+
+/**
+ * Returns the list of AppConnection ids that currently have a linked
+ * NotificationSource for the authenticated user. Used by the UI to
+ * decide whether to show "Enable notifications" or "Configure rules".
+ */
+export async function getAppConnectionsWithNotifications(): Promise<number[]> {
+  const userId = await requireUserId();
+  const sources = await prisma.notificationSource.findMany({
+    where: { userId, appConnectionId: { not: null } },
+    select: { appConnectionId: true },
+    distinct: ["appConnectionId"],
+  });
+  return sources
+    .map((s) => s.appConnectionId)
+    .filter((id): id is number => id !== null);
 }

@@ -11,6 +11,7 @@ import { getGroups, getGroupsWithFullTiles } from "@/lib/queries/groups";
 import { getUserSettings } from "@/lib/queries/settings";
 import { getSubDashboards } from "@/lib/queries/subdashboards";
 import { getAppConnections } from "@/lib/queries/appConnections";
+import { getAppConnectionsWithNotifications } from "@/lib/actions/notifications";
 import { decrypt } from "@/lib/crypto";
 import { auth } from "@/lib/auth";
 
@@ -19,7 +20,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = parseInt(session.user.id, 10);
 
-  const [tiles, foundationApps, searchProviders, groups, groupsWithFullTiles, settings, subDashboards, appConnections] = await Promise.all([
+  const [tiles, foundationApps, searchProviders, groups, groupsWithFullTiles, settings, subDashboards, appConnections, connectionsWithNotifications] = await Promise.all([
     getTiles(userId),
     getFoundationApps(),
     getSearchProviders(),
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
     getUserSettings(userId),
     getSubDashboards(userId),
     getAppConnections(userId),
+    getAppConnectionsWithNotifications(),
   ]);
 
   const aiConfigured = Boolean(
@@ -128,6 +130,7 @@ export default async function DashboardPage() {
             url: c.url,
             description: c.description,
           }))}
+          connectionsWithNotifications={connectionsWithNotifications}
           initialGroups={groups.map((g) => ({
             id: g.id,
             title: g.title,

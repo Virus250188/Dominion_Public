@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { getSubDashboardWithData } from "@/lib/queries/subdashboards";
 import { getFoundationApps } from "@/lib/queries/tiles";
 import { getUserSettings } from "@/lib/queries/settings";
+import { getAppConnectionsWithNotifications } from "@/lib/actions/notifications";
 import { decrypt } from "@/lib/crypto";
 import { SubDashboardView } from "@/components/dashboard/SubDashboardView";
 import { Header } from "@/components/dashboard/Header";
@@ -26,10 +27,11 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
     redirect("/");
   }
 
-  const [subDashboard, foundationApps, settings] = await Promise.all([
+  const [subDashboard, foundationApps, settings, connectionsWithNotifications] = await Promise.all([
     getSubDashboardWithData(userId, subId),
     getFoundationApps(),
     getUserSettings(userId),
+    getAppConnectionsWithNotifications(),
   ]);
 
   if (!subDashboard) {
@@ -119,6 +121,7 @@ export default async function SubDashboardPage({ params }: SubDashboardPageProps
           initialGroups={groups}
           initialGroupsWithTiles={groupsWithTiles}
           foundationApps={foundationApps}
+          connectionsWithNotifications={connectionsWithNotifications}
           gridColumns={settings?.gridColumns ?? 6}
         />
       </main>

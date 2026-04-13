@@ -208,6 +208,7 @@ model NotificationSource {
   rssLastFetch  DateTime?
   rateLimit     Int       @default(60)
   defaultCategory String?
+  ruleConfig    String?   // JSON: { enabledRules: ["interface_down", ...] }
   appConnectionId Int?
   appConnection   AppConnection? @relation(fields: [appConnectionId], references: [id], onDelete: SetNull)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -232,6 +233,7 @@ model Notification {
   url          String?
   icon         String?
   acknowledged Boolean   @default(false)
+  dedupKey     String?
   receivedAt   DateTime  @default(now())
   expiresAt    DateTime?
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -239,4 +241,5 @@ model Notification {
 
   @@index([userId])
   @@index([sourceId])
+  @@index([sourceId, dedupKey])
 }

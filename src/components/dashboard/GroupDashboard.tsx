@@ -35,6 +35,7 @@ interface GroupDashboardProps {
   tiles: TileData[];
   allTiles: TileData[];
   assignedTileIds: number[];
+  connectionsWithNotifications?: number[];
   gridColumns: number;
 }
 
@@ -43,6 +44,7 @@ export function GroupDashboard({
   tiles: initialTiles,
   allTiles,
   assignedTileIds: initialAssignedIds,
+  connectionsWithNotifications = [],
   gridColumns,
 }: GroupDashboardProps) {
   const [tiles, setTiles] = useState<TileData[]>(initialTiles);
@@ -218,6 +220,7 @@ export function GroupDashboard({
         onOpenChange={setEditDialogOpen}
         tile={editingTile}
         foundationApps={[]}
+        connectionsWithNotifications={connectionsWithNotifications}
         groups={[]}
         onSave={handleSaveTile}
       />

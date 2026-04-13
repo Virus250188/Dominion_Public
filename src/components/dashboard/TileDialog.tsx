@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { AppIcon } from "./AppIcon";
 import { createGroup } from "@/lib/actions/groups";
 import { createAppConnection, getAppConnectionConfig } from "@/lib/actions/appConnections";
+import { enableAppNotifications } from "@/lib/actions/notifications";
 import { getAllPlugins, getPlugin } from "@/plugins/registry";
 import type { AppPlugin, TileSize, ConfigField, CrawlEntityGroup } from "@/plugins/types";
 import { fuzzyMatchIcon } from "@/lib/icons";
@@ -118,6 +119,7 @@ interface TileDialogProps {
   initialGroupId?: number | null;
   foundationApps: FoundationAppData[];
   appConnections?: AppConnectionSummary[];
+  connectionsWithNotifications?: number[];
   groups: GroupData[];
   onGroupsChange?: (groups: GroupData[]) => void;
   onSave: (data: {
@@ -138,7 +140,9 @@ interface TileDialogProps {
   onOpenGroupDialog?: () => void;
 }
 
-export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundationApps, appConnections = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
+export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundationApps, appConnections = [], connectionsWithNotifications: _connectionsWithNotifications = [], groups, onGroupsChange, onSave, onOpenGroupDialog }: TileDialogProps) {
+  // Referenced to satisfy eslint while Task 4 wires this up for existing connections.
+  void _connectionsWithNotifications;
   // Dialog mode: "select" for new tile mode chooser, "app" for app form, "group" for group placeholder
   const [dialogMode, setDialogMode] = useState<"select" | "app" | "group">("select");
 
@@ -161,6 +165,7 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState("");
   const [enhancedEnabled, setEnhancedEnabled] = useState(false);
+  const [enableNotifications, setEnableNotifications] = useState(false);
 
   // Connection tested gate: options only visible after successful test
   const [connectionTested, setConnectionTested] = useState(false);
@@ -227,6 +232,7 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
       setType(tile.type as "standard" | "enhanced");
       setEnhancedType(tile.enhancedType || "");
       setEnhancedEnabled(tile.type === "enhanced");
+      setEnableNotifications(false);
       setHasPluginMatch(tile.type === "enhanced" && !!tile.enhancedType);
       setColumnSpan(tile.columnSpan ?? 1);
       setRowSpan(tile.rowSpan ?? 1);
@@ -249,6 +255,7 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
       setType("standard");
       setEnhancedType("");
       setEnhancedEnabled(false);
+      setEnableNotifications(false);
       setEnhancedConfig({});
       setColumnSpan(1);
       setRowSpan(1);
@@ -413,9 +420,14 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
     if (selectedEntities.length > limit) {
       setSelectedEntities(prev => prev.slice(0, limit));
     }
-    if (selectedStats.length > limit) {
-      setSelectedStats(prev => prev.slice(0, limit));
-    }
+    // Filter out stats not available for the new size, then trim to limit
+    const availableKeys = matchedPlugin?.statOptions
+      .filter(o => !o.showForSizes || o.showForSizes.includes(currentSize))
+      .map(o => o.key) ?? [];
+    setSelectedStats(prev => {
+      const filtered = prev.filter(key => availableKeys.includes(key));
+      return filtered.slice(0, limit);
+    });
   }, [currentSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-crawl is triggered inside the main useEffect above via autoCrawlRef
@@ -587,6 +599,16 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
           description: description || null,
         });
         finalConnectionId = newConn.id;
+
+        // Auto-enable notifications if the user toggled the option
+        if (enableNotifications && matchedPlugin?.supportsNotifications && (matchedPlugin?.notificationRules?.length ?? 0) > 0) {
+          try {
+            await enableAppNotifications(newConn.id);
+          } catch (err) {
+            console.error("Failed to enable notifications for new connection:", err);
+            // Non-fatal: tile still saves
+          }
+        }
       }
 
       onSave({
@@ -1230,6 +1252,34 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
               </div>
             </div>}
 
+            {/* ── 6b. Notifications toggle (only for new connections with plugin support) ── */}
+            {hasPluginMatch
+              && enhancedEnabled
+              && matchedPlugin?.supportsNotifications
+              && (matchedPlugin?.notificationRules?.length ?? 0) > 0
+              && connectionMode === "new"
+              && (
+              <div className="rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {enableNotifications && (
+                      <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0" />
+                    )}
+                    <div>
+                      <Label className="text-sm font-medium">Benachrichtigungen</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Erhalte App-Benachrichtigungen für diese Verbindung
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={enableNotifications}
+                    onCheckedChange={setEnableNotifications}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* ── Enhanced sections (only visible when enhanced is ON) ── */}
             {enhancedEnabled && (
               <>
@@ -1316,15 +1366,10 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
                   const connectionFields = matchedPlugin.configFields.filter(
                     (f) => CONNECTION_KEYS.has(f.key) || f.required || f.type === "oauth"
                   );
-                  // Widget-only fields: only show when current size has widget layout
-                  const WIDGET_ONLY_KEYS = new Set(["carouselSpeed", "carouselItems"]);
-                  const currentHint = matchedPlugin.renderHints[currentSize];
-                  const isWidgetLayout = currentHint?.layout === "widget";
-
                   const featureFields = matchedPlugin.configFields.filter(
                     (f) => !CONNECTION_KEYS.has(f.key) && !f.required && f.type !== "oauth"
                   ).filter(
-                    (f) => isWidgetLayout || !WIDGET_ONLY_KEYS.has(f.key)
+                    (f) => !f.showForSizes || f.showForSizes.includes(currentSize)
                   );
 
                   // Connections matching this plugin type
@@ -1617,40 +1662,45 @@ export function TileDialog({ open, onOpenChange, tile, initialGroupId, foundatio
                       </div>
                     ) : (
                       /* Fall back to regular statOption checkboxes for non-crawl plugins */
-                      matchedPlugin.statOptions.length > 0 && (
-                        <div className="space-y-2">
-                          <Label className="text-sm">Anzeige Optionen</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {SIZE_DESCRIPTIONS[currentSize]}
-                          </p>
-                          <div className="space-y-1.5">
-                            {matchedPlugin.statOptions.map((option) => (
-                              <label key={option.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedStats.includes(option.key)}
-                                  onChange={(e) => {
-                                    if (e.target.checked && selectedStats.length >= statLimit) return;
-                                    setSelectedStats(prev =>
-                                      e.target.checked
-                                        ? [...prev, option.key]
-                                        : prev.filter(k => k !== option.key)
-                                    );
-                                  }}
-                                  className="rounded"
-                                />
-                                <span className="text-foreground">{option.label}</span>
-                                <span className="text-xs text-muted-foreground">- {option.description}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {selectedStats.length >= statLimit && (
+                      (() => {
+                        const filteredStatOptions = matchedPlugin.statOptions.filter(
+                          (option) => !option.showForSizes || option.showForSizes.includes(currentSize)
+                        );
+                        return filteredStatOptions.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm">Anzeige Optionen</Label>
                             <p className="text-xs text-muted-foreground">
-                              Maximum ({statLimit}) erreicht.
+                              {SIZE_DESCRIPTIONS[currentSize]}
                             </p>
-                          )}
-                        </div>
-                      )
+                            <div className="space-y-1.5">
+                              {filteredStatOptions.map((option) => (
+                                <label key={option.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStats.includes(option.key)}
+                                    onChange={(e) => {
+                                      if (e.target.checked && selectedStats.length >= statLimit) return;
+                                      setSelectedStats(prev =>
+                                        e.target.checked
+                                          ? [...prev, option.key]
+                                          : prev.filter(k => k !== option.key)
+                                      );
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-foreground">{option.label}</span>
+                                  <span className="text-xs text-muted-foreground">- {option.description}</span>
+                                </label>
+                              ))}
+                            </div>
+                            {selectedStats.length >= statLimit && (
+                              <p className="text-xs text-muted-foreground">
+                                Maximum ({statLimit}) erreicht.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </>
                 )}

@@ -74,13 +74,14 @@ interface DashboardProps {
   initialTiles: TileData[];  // Only ungrouped tiles
   foundationApps: FoundationAppData[];
   appConnections?: AppConnectionSummary[];
+  connectionsWithNotifications?: number[];
   initialGroups: (GroupData & { icon?: string | null; color?: string; tileCount?: number; assignedTileIds?: number[] })[];
   initialGroupsWithTiles?: GroupWithTiles[];  // Groups with their full tile data
   initialSubDashboards?: SubDashboardData[];
   gridColumns?: number;
 }
 
-export function Dashboard({ initialTiles, foundationApps, appConnections, initialGroups, initialGroupsWithTiles, initialSubDashboards, gridColumns = 6 }: DashboardProps) {
+export function Dashboard({ initialTiles, foundationApps, appConnections, connectionsWithNotifications = [], initialGroups, initialGroupsWithTiles, initialSubDashboards, gridColumns = 6 }: DashboardProps) {
   const [tiles, setTiles] = useState<TileData[]>(initialTiles);
   const [groups, setGroups] = useState<GroupWithCount[]>(
     initialGroups.map((g): GroupWithCount => ({
@@ -724,6 +725,7 @@ export function Dashboard({ initialTiles, foundationApps, appConnections, initia
         initialGroupId={editingTileGroupId}
         foundationApps={foundationApps}
         appConnections={appConnections || []}
+        connectionsWithNotifications={connectionsWithNotifications}
         groups={groupDataForDialog}
         onGroupsChange={(newGroups) =>
           setGroups((prev) => {

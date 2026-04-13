@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,9 +42,11 @@ import {
   updateNotificationSource,
   deleteNotificationSource,
   regenerateApiKey,
+  updateNotificationRules,
 } from "@/lib/actions/notifications";
 import { PRESET_COLORS } from "@/lib/constants";
 import { IconPicker } from "@/components/dashboard/IconPicker";
+import type { PluginNotificationRule } from "@/plugins/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -63,6 +65,8 @@ export interface NotificationSourceItem {
   appConnectionId?: number | null;
   createdAt: string;
   totalNotifications: number;
+  ruleConfig?: string | null;
+  pluginRules?: PluginNotificationRule[] | null;
 }
 
 type FilterTab = "all" | "active" | "paused";
@@ -142,9 +146,52 @@ export function NotificationSourceManager({
   // ── Delete confirmation ──
   const [deleteConfirm, setDeleteConfirm] = useState<NotificationSourceItem | null>(null);
 
+  // ── Notification rules state ──
+  const [rulesUpdating, setRulesUpdating] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
+
   // ── Derived ──
   const [sources, setSources] = useState(initialSources);
   const selected = selectedId !== null ? sources.find((s) => s.id === selectedId) ?? null : null;
+
+  // Derive enabled rules from the selected source's ruleConfig — no useEffect needed
+  const enabledRulesSet = useMemo<Set<string>>(() => {
+    if (!selected?.ruleConfig) return new Set();
+    try {
+      const parsed = JSON.parse(selected.ruleConfig);
+      return new Set(Array.isArray(parsed?.enabledRules) ? parsed.enabledRules : []);
+    } catch {
+      return new Set();
+    }
+  }, [selected?.ruleConfig]);
+
+  function handleToggleRule(ruleId: string, enabled: boolean) {
+    if (!selected) return;
+    setRulesError(null);
+    const next = new Set(enabledRulesSet);
+    if (enabled) next.add(ruleId);
+    else next.delete(ruleId);
+    const nextRuleConfig = JSON.stringify({ enabledRules: Array.from(next) });
+    const previousRuleConfig = selected.ruleConfig ?? null;
+    const sourceId = selected.id;
+
+    // Optimistic update on the central sources state — drives `selected.ruleConfig` and the useMemo
+    setSources((prev) =>
+      prev.map((s) => (s.id === sourceId ? { ...s, ruleConfig: nextRuleConfig } : s))
+    );
+    setRulesUpdating(true);
+    startTransition(async () => {
+      const result = await updateNotificationRules(sourceId, Array.from(next));
+      if (result && "error" in result && typeof result.error === "string") {
+        setRulesError(result.error);
+        // Revert
+        setSources((prev) =>
+          prev.map((s) => (s.id === sourceId ? { ...s, ruleConfig: previousRuleConfig } : s))
+        );
+      }
+      setRulesUpdating(false);
+    });
+  }
 
   const filteredSources = sources.filter((s) => {
     if (filter === "active") return s.enabled;
@@ -436,6 +483,56 @@ export function NotificationSourceManager({
             </Button>
           </div>
         </div>
+
+        {/* Notification Rules — only when the plugin declares any */}
+        {selected.pluginRules && selected.pluginRules.length > 0 && (
+          <div className="glass-card p-6 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Benachrichtigungs-Regeln</Label>
+              <p className="text-xs text-muted-foreground">
+                Waehle aus, welche Ereignisse Benachrichtigungen ausloesen sollen.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {selected.pluginRules.map((rule) => {
+                const isEnabled = enabledRulesSet.has(rule.id);
+                return (
+                  <div
+                    key={rule.id}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{rule.label}</span>
+                        <Badge
+                          variant={
+                            rule.severity === "critical"
+                              ? "destructive"
+                              : rule.severity === "warning"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-xs"
+                        >
+                          {rule.severity}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{rule.description}</p>
+                    </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
+                      disabled={rulesUpdating}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {rulesError && (
+              <p className="text-xs text-destructive">{rulesError}</p>
+            )}
+          </div>
+        )}
 
         {/* RSS Info */}
         {selected.type === "rss" && (
